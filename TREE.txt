@@ -1,0 +1,148 @@
+bbv-inversiones/
+│
+├── LICENSE
+├── README.md
+├── .gitignore
+├── backend/
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── accounts/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── tests.py
+│   │   ├── views.py
+│   │   └── migrations/
+│   │       └── __init__.py
+│   ├── biometrics/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── tests.py
+│   │   ├── views.py
+│   │   └── migrations/
+│   │       └── __init__.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── asgi.py
+│   │   ├── wsgi.py
+│   │   ├── urls.py
+│   │   └── settings.py
+│   ├── apps/
+│   │   ├── accounts/
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py
+│   │   │   ├── tests.py
+│   │   │   ├── views.py
+│   │   │   └── migrations/
+│   │   │       └── __init__.py
+│   │   ├── biometrics/
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py
+│   │   │   ├── tests.py
+│   │   │   ├── views.py
+│   │   │   └── migrations/
+│   │   │       └── __init__.py
+│   │   └── financials/
+│   │       ├── __init__.py
+│   │       ├── admin.py
+│   │       ├── apps.py
+│   │       ├── models.py
+│   │       ├── tests.py
+│   │       ├── views.py
+│   │       └── migrations/
+│   │           └── __init__.py
+│   ├── api/
+│   ├── legacy/
+│   └── services/
+├── agents/
+├── data/
+├── docs/
+│   ├── arquitectura/
+│   ├── backend/
+│   ├── despliegue/
+│   └── frontend/
+├── frontend/
+│   ├── AGENTS_frontend.md
+│   ├── LICENSE.md
+│   ├── README.md
+│   ├── .gitignore
+│   ├── banner.png
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   ├── tsconfig.app.json
+│   ├── tsconfig.node.json
+│   ├── postcss.config.js
+│   ├── eslint.config.js
+│   ├── public/
+│   │   ├── favicon.png
+│   │   └── images/
+│   │       ├── brand/
+│   │       ├── cards/
+│   │       ├── carousel/
+│   │       ├── chat/
+│   │       ├── country/
+│   │       ├── error/
+│   │       ├── grid-image/
+│   │       ├── icons/
+│   │       ├── logo/
+│   │       ├── product/
+│   │       ├── shape/
+│   │       ├── task/
+│   │       ├── user/
+│   │       └── video-thumb/
+│   └── src/
+│       ├── agents/
+│       │   └── useFinancialSimulator.ts
+│       ├── api/
+│       │   └── client.ts
+│       ├── components/
+│       │   ├── auth/
+│       │   ├── bbv/
+│       │   ├── charts/
+│       │   ├── common/
+│       │   ├── ecommerce/
+│       │   ├── form/
+│       │   ├── header/
+│       │   ├── tables/
+│       │   ├── ui/
+│       │   └── UserProfile/
+│       ├── context/
+│       │   ├── SidebarContext.tsx
+│       │   └── ThemeContext.tsx
+│       ├── hooks/
+│       │   ├── useGoBack.ts
+│       │   └── useModal.ts
+│       ├── icons/
+│       │   ├── index.ts
+│       │   └── varios .svg
+│       ├── layout/
+│       │   ├── AppHeader.tsx
+│       │   ├── AppLayout.tsx
+│       │   ├── AppSidebar.tsx
+│       │   ├── Backdrop.tsx
+│       │   └── SidebarWidget.tsx
+│       ├── pages/
+│       │   ├── AuthPages/
+│       │   ├── Charts/
+│       │   ├── Dashboard/
+│       │   ├── Forms/
+│       │   ├── OtherPage/
+│       │   ├── Tables/
+│       │   ├── UiElements/
+│       │   └── UserProfiles.tsx
+│       ├── App.tsx
+│       ├── index.css
+│       ├── main.tsx
+│       ├── svg.d.ts
+│       └── vite-env.d.ts
+└── scripts/
