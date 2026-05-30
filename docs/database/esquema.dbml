@@ -1,0 +1,484 @@
+/////////////////////////////////////////////////////
+// CATALOGOS
+/////////////////////////////////////////////////////
+
+Table genero {
+  id_genero int [pk, increment]
+
+  nombre varchar(50)
+  descripcion text
+
+  activo boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table sector_empresa {
+  id_sector int [pk, increment]
+
+  nombre varchar(100)
+  descripcion text
+
+  activo boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// USUARIOS
+/////////////////////////////////////////////////////
+
+Table usuario {
+  id_usuario int [pk, increment]
+
+  nombre varchar(100)
+  apellido_paterno varchar(100)
+  apellido_materno varchar(100)
+
+  ci varchar(30) [unique]
+
+  fecha_nacimiento date
+
+  id_genero int
+
+  celular varchar(30)
+
+  email varchar(255) [unique]
+  password varchar(255)
+
+  foto_perfil varchar(500)
+
+  oauth_google boolean [default: false]
+
+  activo boolean [default: true]
+
+  ultimo_acceso timestamp
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table direccion {
+  id_direccion int [pk, increment]
+
+  id_usuario int
+
+  zona varchar(150)
+  calle varchar(150)
+  numero varchar(50)
+  referencia text
+
+  principal boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table perfil_usuario {
+  id_perfil int [pk, increment]
+
+  id_usuario int [unique]
+
+  biografia text
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table sesion_usuario {
+  id_sesion int [pk, increment]
+
+  id_usuario int
+
+  token varchar(500)
+
+  ip varchar(100)
+  dispositivo varchar(255)
+
+  fecha_inicio timestamp
+  fecha_expiracion timestamp
+
+  activa boolean [default: true]
+}
+
+/////////////////////////////////////////////////////
+// EMPRESAS
+/////////////////////////////////////////////////////
+
+Table empresa {
+  id_empresa int [pk, increment]
+
+  nombre varchar(255)
+
+  codigo_bbv varchar(50) [unique]
+
+  sigla varchar(20)
+
+  id_sector int
+
+  descripcion text
+
+  sitio_web varchar(500)
+
+  activa boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table reporte_financiero {
+  id_reporte int [pk, increment]
+
+  id_empresa int
+
+  gestion int
+
+  tipo_periodo varchar(20)
+
+  trimestre int
+
+  fecha_publicacion date
+
+  fecha_descarga timestamp
+
+  url_pdf varchar(500)
+
+  nombre_archivo varchar(255)
+
+  ruta_archivo varchar(500)
+
+  hash_archivo varchar(255)
+
+  tamano_archivo bigint
+
+  estado_procesamiento varchar(50)
+
+  mensaje_error text
+
+  datos_extraidos_json json
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// INDICADORES
+/////////////////////////////////////////////////////
+
+Table catalogo_indicador {
+  id_catalogo_indicador int [pk, increment]
+
+  nombre varchar(150)
+
+  codigo varchar(50) [unique]
+
+  descripcion text
+
+  formula text
+
+  activo boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table indicador_financiero {
+  id_indicador int [pk, increment]
+
+  id_reporte int
+
+  score_financiero decimal(5,2)
+
+  clasificacion_riesgo varchar(100)
+
+  recomendacion varchar(200)
+
+  resumen_interpretativo text
+
+  fecha_calculo timestamp
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table valor_indicador {
+  id_valor int [pk, increment]
+
+  id_indicador int
+
+  id_catalogo_indicador int
+
+  valor decimal(18,6)
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// ETL
+/////////////////////////////////////////////////////
+
+Table proceso_carga {
+  id_proceso int [pk, increment]
+
+  id_empresa int
+  id_reporte int
+
+  tipo_proceso varchar(50)
+
+  estado varchar(50)
+
+  fecha_inicio timestamp
+  fecha_fin timestamp
+
+  detalle text
+  mensaje_error text
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table archivo_procesado {
+  id_archivo int [pk, increment]
+
+  id_reporte int
+
+  nombre_archivo varchar(255)
+
+  ruta_archivo varchar(500)
+
+  hash_archivo varchar(255)
+
+  tipo_archivo varchar(50)
+
+  created_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// IA
+/////////////////////////////////////////////////////
+
+Table simulacion_financiera {
+  id_simulacion int [pk, increment]
+
+  id_usuario int
+
+  nombre_simulacion varchar(200)
+
+  parametros json
+
+  resultado json
+
+  score_confianza decimal(5,2)
+
+  created_at timestamp
+}
+
+Table recomendacion_ia {
+  id_recomendacion int [pk, increment]
+
+  id_usuario int
+
+  id_empresa int
+
+  recomendacion varchar(100)
+
+  justificacion text
+
+  score decimal(5,2)
+
+  created_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// ADMINISTRACION
+/////////////////////////////////////////////////////
+
+Table bitacora_sistema {
+  id_bitacora int [pk, increment]
+
+  id_usuario int
+
+  accion varchar(200)
+
+  modulo varchar(100)
+
+  detalle text
+
+  ip varchar(100)
+
+  created_at timestamp
+}
+
+Table configuracion_sistema {
+  id_configuracion int [pk, increment]
+
+  clave varchar(100) [unique]
+
+  valor text
+
+  descripcion text
+
+  updated_at timestamp
+}
+
+Table tarea_programada {
+  id_tarea int [pk, increment]
+
+  nombre varchar(150)
+
+  descripcion text
+
+  cron varchar(100)
+
+  activa boolean [default: true]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table ejecucion_tarea {
+  id_ejecucion int [pk, increment]
+
+  id_tarea int
+
+  fecha_inicio timestamp
+  fecha_fin timestamp
+
+  estado varchar(50)
+
+  resultado text
+
+  created_at timestamp
+}
+
+/////////////////////////////////////////////////////
+// DJANGO NATIVO
+/////////////////////////////////////////////////////
+
+Table auth_group {
+  id int [pk]
+  name varchar(150)
+}
+
+Table auth_permission {
+  id int [pk]
+  name varchar(255)
+
+  content_type_id int
+
+  codename varchar(100)
+}
+
+Table auth_group_permissions {
+  id bigint [pk]
+
+  group_id int
+  permission_id int
+}
+
+Table usuario_groups {
+  id bigint [pk]
+
+  usuario_id int
+  group_id int
+}
+
+Table usuario_user_permissions {
+  id bigint [pk]
+
+  usuario_id int
+  permission_id int
+}
+
+Table django_content_type {
+  id int [pk]
+
+  app_label varchar(100)
+  model varchar(100)
+}
+
+Table django_admin_log {
+  id int [pk]
+
+  action_time timestamp
+
+  user_id int
+
+  content_type_id int
+
+  object_id text
+
+  object_repr varchar(200)
+
+  action_flag smallint
+
+  change_message text
+}
+
+Table django_migrations {
+  id bigint [pk]
+
+  app varchar(255)
+
+  name varchar(255)
+
+  applied timestamp
+}
+
+Table django_session {
+  session_key varchar(40) [pk]
+
+  session_data text
+
+  expire_date timestamp
+}
+
+/////////////////////////////////////////////////////
+// RELACIONES
+/////////////////////////////////////////////////////
+
+Ref: usuario.id_genero > genero.id_genero
+
+Ref: direccion.id_usuario > usuario.id_usuario
+Ref: perfil_usuario.id_usuario > usuario.id_usuario
+Ref: sesion_usuario.id_usuario > usuario.id_usuario
+
+Ref: empresa.id_sector > sector_empresa.id_sector
+
+Ref: reporte_financiero.id_empresa > empresa.id_empresa
+
+Ref: indicador_financiero.id_reporte > reporte_financiero.id_reporte
+
+Ref: valor_indicador.id_indicador > indicador_financiero.id_indicador
+Ref: valor_indicador.id_catalogo_indicador > catalogo_indicador.id_catalogo_indicador
+
+Ref: proceso_carga.id_empresa > empresa.id_empresa
+Ref: proceso_carga.id_reporte > reporte_financiero.id_reporte
+
+Ref: archivo_procesado.id_reporte > reporte_financiero.id_reporte
+
+Ref: simulacion_financiera.id_usuario > usuario.id_usuario
+
+Ref: recomendacion_ia.id_usuario > usuario.id_usuario
+Ref: recomendacion_ia.id_empresa > empresa.id_empresa
+
+Ref: bitacora_sistema.id_usuario > usuario.id_usuario
+
+Ref: ejecucion_tarea.id_tarea > tarea_programada.id_tarea
+
+Ref: auth_permission.content_type_id > django_content_type.id
+
+Ref: auth_group_permissions.group_id > auth_group.id
+Ref: auth_group_permissions.permission_id > auth_permission.id
+
+Ref: usuario_groups.usuario_id > usuario.id_usuario
+Ref: usuario_groups.group_id > auth_group.id
+
+Ref: usuario_user_permissions.usuario_id > usuario.id_usuario
+Ref: usuario_user_permissions.permission_id > auth_permission.id
+
+Ref: django_admin_log.user_id > usuario.id_usuario
+Ref: django_admin_log.content_type_id > django_content_type.id

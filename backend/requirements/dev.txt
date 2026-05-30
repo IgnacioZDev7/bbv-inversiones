@@ -1,0 +1,10 @@
+-r base.txt
+
+pytest
+pytest-django
+
+black
+isort
+flake8
+
+ipython
