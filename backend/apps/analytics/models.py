@@ -109,3 +109,73 @@ class ValorIndicador(models.Model):
 
     def __str__(self):
         return f"{self.catalogo_indicador.codigo}: {self.valor}"
+
+
+# NUEVO CLASS
+class SimulacionFinanciera(models.Model):
+    id_simulacion = models.AutoField(primary_key=True)
+
+    usuario = models.ForeignKey(
+        "accounts.Usuario",
+        on_delete=models.CASCADE,
+        related_name="simulaciones"
+    )
+
+    nombre_simulacion = models.CharField(
+        max_length=200
+    )
+
+    parametros = models.JSONField()
+
+    resultado = models.JSONField()
+
+    score_confianza = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "simulacion_financiera"
+
+    def __str__(self):
+        return self.nombre_simulacion
+    
+
+#NUEVO CLASS
+class RecomendacionIA(models.Model):
+    id_recomendacion = models.AutoField(primary_key=True)
+
+    usuario = models.ForeignKey(
+        "accounts.Usuario",
+        on_delete=models.CASCADE,
+        related_name="recomendaciones"
+    )
+
+    empresa = models.ForeignKey(
+        "financials.Empresa",
+        on_delete=models.CASCADE,
+        related_name="recomendaciones"
+    )
+
+    recomendacion = models.CharField(
+        max_length=100
+    )
+
+    justificacion = models.TextField()
+
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "recomendacion_ia"
+
+    def __str__(self):
+        return f"{self.empresa.nombre} - {self.recomendacion}"
