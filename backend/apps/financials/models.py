@@ -159,5 +159,3 @@ class ReporteFinanciero(models.Model):
 
     def __str__(self):
         return f"{self.empresa.nombre} - {self.gestion}"
-
-

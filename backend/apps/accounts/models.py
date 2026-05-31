@@ -24,7 +24,17 @@ class Genero(models.Model):
 class Usuario(AbstractUser):
     id_usuario = models.BigAutoField(primary_key=True)
 
+    # Eliminamos los campos heredados de Django
+    first_name = None
+    last_name = None
+
+    nombre = models.CharField(
+        max_length=100,
+        default=""
+    )
+
     apellido_paterno = models.CharField(max_length=100)
+
     apellido_materno = models.CharField(
         max_length=100,
         blank=True,

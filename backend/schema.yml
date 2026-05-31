@@ -1,0 +1,233 @@
+openapi: 3.0.3
+info:
+  title: BBV Inversiones API
+  version: 1.0.0
+  description: Sistema de análisis de inversiones y simulación financiera.
+paths:
+  /api/financials/empresas/:
+    get:
+      operationId: financials_empresas_list
+      tags:
+      - financials
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Empresa'
+          description: ''
+    post:
+      operationId: financials_empresas_create
+      tags:
+      - financials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+          description: ''
+  /api/financials/empresas/{id_empresa}/:
+    get:
+      operationId: financials_empresas_retrieve
+      parameters:
+      - in: path
+        name: id_empresa
+        schema:
+          type: integer
+        description: A unique integer value identifying this empresa.
+        required: true
+      tags:
+      - financials
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+          description: ''
+    put:
+      operationId: financials_empresas_update
+      parameters:
+      - in: path
+        name: id_empresa
+        schema:
+          type: integer
+        description: A unique integer value identifying this empresa.
+        required: true
+      tags:
+      - financials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Empresa'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+          description: ''
+    patch:
+      operationId: financials_empresas_partial_update
+      parameters:
+      - in: path
+        name: id_empresa
+        schema:
+          type: integer
+        description: A unique integer value identifying this empresa.
+        required: true
+      tags:
+      - financials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmpresa'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEmpresa'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEmpresa'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+          description: ''
+    delete:
+      operationId: financials_empresas_destroy
+      parameters:
+      - in: path
+        name: id_empresa
+        schema:
+          type: integer
+        description: A unique integer value identifying this empresa.
+        required: true
+      tags:
+      - financials
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Empresa:
+      type: object
+      properties:
+        id_empresa:
+          type: integer
+          readOnly: true
+        nombre:
+          type: string
+          maxLength: 255
+        codigo_bbv:
+          type: string
+          maxLength: 50
+        sigla:
+          type: string
+          nullable: true
+          maxLength: 20
+        descripcion:
+          type: string
+          nullable: true
+        sitio_web:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        activa:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        sector:
+          type: integer
+      required:
+      - codigo_bbv
+      - created_at
+      - id_empresa
+      - nombre
+      - sector
+      - updated_at
+    PatchedEmpresa:
+      type: object
+      properties:
+        id_empresa:
+          type: integer
+          readOnly: true
+        nombre:
+          type: string
+          maxLength: 255
+        codigo_bbv:
+          type: string
+          maxLength: 50
+        sigla:
+          type: string
+          nullable: true
+          maxLength: 20
+        descripcion:
+          type: string
+          nullable: true
+        sitio_web:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        activa:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        sector:
+          type: integer
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
