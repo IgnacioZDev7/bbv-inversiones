@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useLocation, useSearchParams, useNavigate } from "react-router";
 import { fetchCompanies } from "../api/client";
+import { useAuth, Role } from "../context/AuthContext";
 
 import {
   ChevronDownIcon,
@@ -31,108 +32,62 @@ type NavItem = {
   icon: React.ReactNode;
   path?: string;
   subItems?: { name: string; path: string; tooltip?: string }[];
+  allowedRoles?: Role[]; // Para RBAC
 };
 
 // --- Iconos de Sectores (SVG Profesionales) ---
 const SectorIcons: Record<string, React.ReactNode> = {
-  Agroindustrial: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  ),
-  Industrial: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-    </svg>
-  ),
-  Comercial: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  ),
-  Servicios: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  ),
-  Financiero: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  ),
-  Energía: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  ),
-  Construcción: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-    </svg>
-  ),
-  Minero: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v2a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v2a1 1 0 01-1 1h-3a1 1 0 00-1 1v1a2 2 0 11-4 0V4z" />
-    </svg>
-  ),
-  Tecnología: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-    </svg>
-  ),
-  Otros: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-    </svg>
-  ),
+  Agroindustrial: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+  Industrial: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+  Comercial: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
+  Servicios: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+  Financiero: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
+  Energía: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+  Construcción: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+  Minero: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v2a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v2a1 1 0 01-1 1h-3a1 1 0 00-1 1v1a2 2 0 11-4 0V4z" /></svg>,
+  Tecnología: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>,
+  Otros: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
 };
 
-// --- Configuración Estática ---
 const BASE_SECTORS = [
-  "Agroindustrial",
-  "Industrial",
-  "Comercial",
-  "Servicios",
-  "Financiero",
-  "Energía",
-  "Construcción",
-  "Minero",
-  "Tecnología",
-  "Otros",
+  "Agroindustrial", "Industrial", "Comercial", "Servicios", "Financiero", 
+  "Energía", "Construcción", "Minero", "Tecnología", "Otros",
 ];
 
-const STATIC_NAV: NavItem[] = [
-  { icon: <GridIcon />, name: "Dashboard Global", path: "/" },
-  { icon: <CalenderIcon />, name: "Calendar", path: "/calendar" },
-  { icon: <UserCircleIcon />, name: "User Profile", path: "/profile" },
-];
+// --- Menús por Rol ---
+const MENU_CONFIG: NavItem[] = [
+  // --- Admin ---
+  { name: "Dashboard Admin", path: "/admin", icon: <GridIcon />, allowedRoles: ['Administrador'] },
+  { name: "Gestión de Usuarios", path: "/admin/users", icon: <UserCircleIcon />, allowedRoles: ['Administrador'] },
+  { name: "Gestión de Empresas", path: "/admin/companies", icon: <BoxCubeIcon />, allowedRoles: ['Administrador'] },
+  { name: "Gestión de Sectores", path: "/admin/sectors", icon: <ListIcon />, allowedRoles: ['Administrador'] },
+  { name: "Auditoría de Procesos", path: "/admin/audit", icon: <TableIcon />, allowedRoles: ['Administrador'] },
 
-const OTHERS_NAV: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart" },
-      { name: "Bar Chart", path: "/bar-chart" },
-    ],
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "UI Elements",
-    subItems: [
-      { name: "Alerts", path: "/alerts" },
-      { name: "Buttons", path: "/buttons" },
-    ],
-  },
+  // --- Analista ---
+  { name: "Dashboard Analista", path: "/analyst", icon: <GridIcon />, allowedRoles: ['Analista'] },
+  { name: "Empresas", path: "/analyst/companies", icon: <BoxCubeIcon />, allowedRoles: ['Analista'] },
+  { name: "Reportes Financieros", path: "/analyst/reports", icon: <PieChartIcon />, allowedRoles: ['Analista'] },
+  { name: "Indicadores", path: "/analyst/indicators", icon: <TableIcon />, allowedRoles: ['Analista'] },
+  { name: "Pipeline Manual", path: "/analyst/pipeline", icon: <PlugInIcon />, allowedRoles: ['Analista'] },
+
+  // --- Auditor ---
+  { name: "Dashboard Auditor", path: "/auditor", icon: <GridIcon />, allowedRoles: ['Auditor'] },
+  { name: "Historial de Procesos", path: "/auditor/history", icon: <CalenderIcon />, allowedRoles: ['Auditor'] },
+  { name: "Reportes Generados", path: "/auditor/reports", icon: <PageIcon />, allowedRoles: ['Auditor'] },
+  { name: "Logs del Sistema", path: "/auditor/logs", icon: <ListIcon />, allowedRoles: ['Auditor'] },
+
+  // --- Inversionista ---
+  { name: "Dashboard Inversionista", path: "/investor", icon: <GridIcon />, allowedRoles: ['Inversionista'] },
+  { name: "Empresas", path: "/investor/companies", icon: <BoxCubeIcon />, allowedRoles: ['Inversionista'] },
+  { name: "Indicadores", path: "/investor/indicators", icon: <TableIcon />, allowedRoles: ['Inversionista'] },
+  { name: "Simulaciones", path: "/investor/simulations", icon: <PieChartIcon />, allowedRoles: ['Inversionista'] },
+  { name: "Recomendaciones", path: "/investor/recommendations", icon: <PageIcon />, allowedRoles: ['Inversionista'] },
 ];
 
 // --- Helpers ---
 const cleanCompanyName = (name: string) => {
   if (!name) return "";
-  return name
-    .replace(/\s+(S\.A\.|S\.R\.L\.|LTDA\.|S\.A\.M\.|INC\.)\b/gi, "")
-    .replace(/,+$/, "")
-    .trim();
+  return name.replace(/\s+(S\.A\.|S\.R\.L\.|LTDA\.|S\.A\.M\.|INC\.)\b/gi, "").replace(/,+$/, "").trim();
 };
 
 const groupCompaniesBySector = (companies: Company[]) => {
@@ -153,14 +108,13 @@ const groupCompaniesBySector = (companies: Company[]) => {
 // --- Componente Principal ---
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activeCompanyId = searchParams.get("company");
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others" | "mercado";
-    index: number;
-  } | null>(null);
+  const [openSubmenu, setOpenSubmenu] = useState<{ type: "main" | "mercado"; index: number; } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -177,6 +131,12 @@ const AppSidebar: React.FC = () => {
     };
     loadData();
   }, []);
+
+  // Filtramos el menú según el rol del usuario
+  const userMenu = useMemo(() => {
+    if (!user) return [];
+    return MENU_CONFIG.filter(item => !item.allowedRoles || item.allowedRoles.includes(user.role));
+  }, [user]);
 
   const marketNavItems: NavItem[] = useMemo(() => {
     const grouped = groupCompaniesBySector(companies);
@@ -195,18 +155,14 @@ const AppSidebar: React.FC = () => {
       }));
   }, [companies]);
 
-  const isActive = useCallback(
-    (path: string) => {
-      if (path === "#") return false;
-      if (path.includes("company=")) {
-        return location.search === path.substring(path.indexOf("?"));
-      }
-      return location.pathname === path && !location.search;
-    },
-    [location.pathname, location.search]
-  );
+  const isActive = useCallback((path: string) => {
+    if (path === "#") return false;
+    if (path.includes("company=")) {
+      return location.search === path.substring(path.indexOf("?"));
+    }
+    return location.pathname === path && !location.search;
+  }, [location.pathname, location.search]);
 
-  // Auto-abrir sector activo
   useEffect(() => {
     let found = false;
     marketNavItems.forEach((nav, index) => {
@@ -217,16 +173,13 @@ const AppSidebar: React.FC = () => {
     });
 
     if (!found) {
-      [STATIC_NAV, OTHERS_NAV].forEach((items, listIdx) => {
-        const type = listIdx === 0 ? "main" : "others";
-        items.forEach((nav, index) => {
-          if (nav.subItems?.some(sub => isActive(sub.path)) || (nav.path && isActive(nav.path))) {
-            setOpenSubmenu({ type, index });
-          }
-        });
+      userMenu.forEach((nav, index) => {
+        if (nav.subItems?.some(sub => isActive(sub.path)) || (nav.path && isActive(nav.path))) {
+          setOpenSubmenu({ type: "main", index });
+        }
       });
     }
-  }, [activeCompanyId, marketNavItems, isActive]);
+  }, [activeCompanyId, marketNavItems, userMenu, isActive]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -242,13 +195,16 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu, companies]);
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others" | "mercado") => {
-    setOpenSubmenu((prev) => 
-      prev?.type === menuType && prev?.index === index ? null : { type: menuType, index }
-    );
+  const handleSubmenuToggle = (index: number, menuType: "main" | "mercado") => {
+    setOpenSubmenu((prev) => prev?.type === menuType && prev?.index === index ? null : { type: menuType, index });
   };
 
-  const renderMenuItems = (items: NavItem[], menuType: "main" | "others" | "mercado") => (
+  const handleLogout = () => {
+    logout();
+    navigate('/signin');
+  };
+
+  const renderMenuItems = (items: NavItem[], menuType: "main" | "mercado") => (
     <ul className="flex flex-col gap-2">
       {items.map((nav, index) => {
         const isMenuOpen = openSubmenu?.type === menuType && openSubmenu?.index === index;
@@ -259,9 +215,7 @@ const AppSidebar: React.FC = () => {
             {nav.subItems ? (
               <button
                 onClick={() => handleSubmenuToggle(index, menuType)}
-                className={`menu-item group w-full ${
-                  isMenuOpen || hasActiveChild ? "menu-item-active" : "menu-item-inactive"
-                } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
+                className={`menu-item group w-full ${isMenuOpen || hasActiveChild ? "menu-item-active" : "menu-item-inactive"} ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
               >
                 <span className={`menu-item-icon-size ${isMenuOpen || hasActiveChild ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
                   {nav.icon}
@@ -275,10 +229,7 @@ const AppSidebar: React.FC = () => {
               </button>
             ) : (
               nav.path && (
-                <Link
-                  to={nav.path}
-                  className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"}`}
-                >
+                <Link to={nav.path} className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"}`}>
                   <span className={`menu-item-icon-size ${isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
                     {nav.icon}
                   </span>
@@ -288,28 +239,15 @@ const AppSidebar: React.FC = () => {
                 </Link>
               )
             )}
-            
             {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-              <div
-                ref={(el) => (subMenuRefs.current[`${menuType}-${index}`] = el)}
-                className="overflow-hidden transition-all duration-300 ease-in-out"
-                style={{ height: isMenuOpen ? `${subMenuHeight[`${menuType}-${index}`] || "auto"}px` : "0px" }}
-              >
+              <div ref={(el) => (subMenuRefs.current[`${menuType}-${index}`] = el)} className="overflow-hidden transition-all duration-300 ease-in-out" style={{ height: isMenuOpen ? `${subMenuHeight[`${menuType}-${index}`] || "auto"}px` : "0px" }}>
                 <ul className="mt-2 space-y-1 ml-9 border-l border-gray-200 dark:border-gray-800 pl-2">
                   {nav.subItems.map((subItem) => (
                     <li key={subItem.name}>
                       {subItem.path === "#" ? (
-                        <span className="block px-3 py-2 text-xs text-gray-400 italic">
-                          {subItem.name}
-                        </span>
+                        <span className="block px-3 py-2 text-xs text-gray-400 italic">{subItem.name}</span>
                       ) : (
-                        <Link
-                          to={subItem.path}
-                          title={subItem.tooltip}
-                          className={`menu-dropdown-item text-sm py-1.5 transition-colors ${
-                            isActive(subItem.path) ? "menu-dropdown-item-active font-medium" : "menu-dropdown-item-inactive hover:text-brand-500"
-                          }`}
-                        >
+                        <Link to={subItem.path} title={subItem.tooltip} className={`menu-dropdown-item text-sm py-1.5 transition-colors ${isActive(subItem.path) ? "menu-dropdown-item-active font-medium" : "menu-dropdown-item-inactive hover:text-brand-500"}`}>
                           {subItem.name}
                         </Link>
                       )}
@@ -342,38 +280,41 @@ const AppSidebar: React.FC = () => {
         </Link>
       </div>
 
-      <div className="flex flex-col overflow-y-auto no-scrollbar pb-10">
+      <div className="flex flex-col overflow-y-auto no-scrollbar pb-10 flex-grow">
         <nav className="space-y-6">
-          {/* Mercado Bursátil Section */}
+          {/* Navegación por Rol */}
           <div>
             <h2 className={`mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"} flex`}>
-              {isExpanded || isHovered || isMobileOpen ? "Mercado Bursátil (BBV)" : <HorizontaLDots className="w-5 h-5" />}
+              {isExpanded || isHovered || isMobileOpen ? "Menú Principal" : <HorizontaLDots className="w-5 h-5" />}
+            </h2>
+            {renderMenuItems(userMenu, "main")}
+          </div>
+
+          {/* Mercado Bursátil Section - Visible para todos */}
+          <div>
+            <h2 className={`mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"} flex`}>
+              {isExpanded || isHovered || isMobileOpen ? "Mercado Bursátil" : <HorizontaLDots className="w-5 h-5" />}
             </h2>
             {renderMenuItems(marketNavItems, "mercado")}
           </div>
-
-          {/* General Section */}
-          <div>
-            <h2 className={`mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"} flex`}>
-              {isExpanded || isHovered || isMobileOpen ? "Administración" : <HorizontaLDots className="w-5 h-5" />}
-            </h2>
-            {renderMenuItems(STATIC_NAV, "main")}
-          </div>
-
-          {/* Components Section */}
-          <div>
-            <h2 className={`mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"} flex`}>
-              {isExpanded || isHovered || isMobileOpen ? "Recursos" : <HorizontaLDots className="w-5 h-5" />}
-            </h2>
-            {renderMenuItems(OTHERS_NAV, "others")}
-          </div>
         </nav>
-        
-        {(isExpanded || isHovered || isMobileOpen) && <div className="mt-auto pt-10"><SidebarWidget /></div>}
+      </div>
+
+      <div className={`py-4 mt-auto border-t border-gray-200 dark:border-gray-800 ${!isExpanded && !isHovered ? "flex justify-center" : ""}`}>
+        <button
+          onClick={handleLogout}
+          className={`menu-item group w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
+        >
+          <span className="menu-item-icon-size text-red-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </span>
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <span className="menu-item-text">Cerrar Sesión</span>
+          )}
+        </button>
       </div>
     </aside>
   );
 };
 
 export default AppSidebar;
-

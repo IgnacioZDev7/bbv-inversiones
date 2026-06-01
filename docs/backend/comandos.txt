@@ -1,0 +1,37 @@
+para ejecutar el pipeline de descarga se debe usar el siguiente comando y estos pasos 
+
+entrar a la carpeta backend por:
+
+cd backend
+
+activar el entorno virtual por:
+
+source venv/Scripts/activate
+
+ejecutar el comando:
+
+python manage.py cargar_empresa CODIGO --desde AÑO_INICIO --hasta AÑO_FIN
+
+solo se debe modificar el CODIGO DE EMPRESA Y EL INTERVALO DE AÑO INICIO Y AÑO AÑO_FIN
+
+
+
+comandos de ejemplo ya ejecutados:
+
+python manage.py cargar_empresa CMI --desde 2022 --hasta 2026
+python manage.py cargar_empresa NXS --desde 2022 --hasta 2026
+python manage.py cargar_empresa DTC --desde 2024 --hasta 2026
+python manage.py cargar_empresa DMT --desde 2022 --hasta 2026
+
+
+porque el pipeline se encarga automáticamente de:
+
+1. Buscar PDF en BBV
+2. Descargar PDF
+3. Guardar PDF localmente
+4. Parsear datos
+5. Limpiar datos
+6. Calcular indicadores
+7. Guardar reporte_financiero
+8. Guardar valor_indicador
+9. Registrar proceso_carga

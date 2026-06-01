@@ -1,69 +1,85 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
+import Unauthorized from "./pages/AuthPages/Unauthorized";
 import NotFound from "./pages/OtherPage/NotFound";
-import UserProfiles from "./pages/UserProfiles";
-import Videos from "./pages/UiElements/Videos";
-import Images from "./pages/UiElements/Images";
-import Alerts from "./pages/UiElements/Alerts";
-import Badges from "./pages/UiElements/Badges";
-import Avatars from "./pages/UiElements/Avatars";
-import Buttons from "./pages/UiElements/Buttons";
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
-import Calendar from "./pages/Calendar";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
-import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
-import TestChart from "./pages/TestChart";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./routes/ProtectedRoute";
+
+// Admin
+import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit } from "./pages/Admin";
+// Analyst
+import { AnalystDashboard, AnalystCompanies, FinancialReports, Indicators, ManualPipeline } from "./pages/Analyst";
+// Auditor
+import { AuditorDashboard, ProcessHistory, GeneratedReports, Logs } from "./pages/Auditor";
+// Investor
+import { InvestorDashboard, InvestorCompanies, InvestorIndicators, Simulations, Recommendations } from "./pages/Investor";
+
+const RootRedirect = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) return null;
+  if (!isAuthenticated || !user) return <Navigate to="/signin" replace />;
+  
+  switch(user.role) {
+    case 'Administrador': return <Navigate to="/admin" replace />;
+    case 'Analista': return <Navigate to="/analyst" replace />;
+    case 'Auditor': return <Navigate to="/auditor" replace />;
+    case 'Inversionista': return <Navigate to="/investor" replace />;
+    default: return <Navigate to="/unauthorized" replace />;
+  }
+};
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <Router>
         <ScrollToTop />
         <Routes>
-          {/* Dashboard Layout */}
-          <Route element={<AppLayout />}>
-            <Route index path="/" element={<Home />} />
-
-            {/* Others Page */}
-            <Route path="/profile" element={<UserProfiles />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/blank" element={<Blank />} />
-
-            {/* Forms */}
-            <Route path="/form-elements" element={<FormElements />} />
-
-            {/* Tables */}
-            <Route path="/basic-tables" element={<BasicTables />} />
-
-            {/* Ui Elements */}
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/avatars" element={<Avatars />} />
-            <Route path="/badge" element={<Badges />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/videos" element={<Videos />} />
-
-            {/* Charts */}
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
-          </Route>
-          {/* Auth Layout */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Test Route (Aislada del Layout) */}
-          <Route path="/test-chart" element={<TestChart />} />
+          <Route element={<AppLayout />}>
+            <Route index path="/" element={<RootRedirect />} />
 
-          {/* Fallback Route */}
+            <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UsersManagement />} />
+              <Route path="/admin/companies" element={<CompaniesManagement />} />
+              <Route path="/admin/sectors" element={<SectorsManagement />} />
+              <Route path="/admin/audit" element={<ProcessAudit />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['Analista']} />}>
+              <Route path="/analyst" element={<AnalystDashboard />} />
+              <Route path="/analyst/companies" element={<AnalystCompanies />} />
+              <Route path="/analyst/reports" element={<FinancialReports />} />
+              <Route path="/analyst/indicators" element={<Indicators />} />
+              <Route path="/analyst/pipeline" element={<ManualPipeline />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['Auditor']} />}>
+              <Route path="/auditor" element={<AuditorDashboard />} />
+              <Route path="/auditor/history" element={<ProcessHistory />} />
+              <Route path="/auditor/reports" element={<GeneratedReports />} />
+              <Route path="/auditor/logs" element={<Logs />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['Inversionista']} />}>
+              <Route path="/investor" element={<InvestorDashboard />} />
+              <Route path="/investor/companies" element={<InvestorCompanies />} />
+              <Route path="/investor/indicators" element={<InvestorIndicators />} />
+              <Route path="/investor/simulations" element={<Simulations />} />
+              <Route path="/investor/recommendations" element={<Recommendations />} />
+            </Route>
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
-    </>
+    </AuthProvider>
   );
 }
