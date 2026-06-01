@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 
@@ -76,7 +76,6 @@ export default function RiskGauge({ metrics }: RiskGaugeProps) {
       fontFamily: 'Inter, sans-serif',
       animations: {
         enabled: true,
-        easing: 'easeinout',
         speed: 800,
         dynamicAnimation: {
           enabled: true,

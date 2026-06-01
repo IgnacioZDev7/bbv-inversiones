@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
-import { fetchMetrics } from '../../api/client';
-
-interface Company {
-  id: string | number;
-  nombre: string;
-  codigo_bbv: string;
-  sector?: string;
-  [key: string]: any;
-}
+import { getReportesByEmpresa } from '../../services/apiServices';
+import type { Empresa, ReporteFinanciero } from '../../types/api';
 
 interface SectorComparisonProps {
-  companies: Company[];
+  companies: Empresa[];
   selectedCompanyId: string;
 }
+
+const mapReporteToChartData = (r: ReporteFinanciero) => {
+  const d = r.datos_extraidos_json || {};
+  return {
+    liquidez: Number(d.liquidez_corriente || 0),
+    endeudamiento: Number(d.endeudamiento || 0)
+  };
+};
 
 export default function SectorComparison({ companies, selectedCompanyId }: SectorComparisonProps) {
   const [chartData, setChartData] = useState<{ name: string; liquidez: number; endeudamiento: number }[]>([]);
@@ -24,42 +25,37 @@ export default function SectorComparison({ companies, selectedCompanyId }: Secto
     const loadComparisonData = async () => {
       setLoading(true);
       try {
-        const currentCompany = companies.find(c => String(c.id) === String(selectedCompanyId));
-        const currentSector = currentCompany?.sector;
-        
-        // 1. Filtrar estrictamente por sector:
-        // SOLO incluir empresas del sector actual
-        const sectorCompanies = currentSector 
-          ? companies.filter(c => c.sector === currentSector)
-          : companies;
+        const currentCompany = companies.find(c => String(c.id_empresa) === String(selectedCompanyId));
+        if (!currentCompany) {
+            setLoading(false);
+            return;
+        }
 
-        // 2. Agrupar datos por empresa: pedimos los datos de cada empresa por id
-        const dataPromises = sectorCompanies.map(comp => fetchMetrics(String(comp.id)));
+        const currentSector = currentCompany.sector;
+        
+        // Filtrar empresas del mismo sector
+        const sectorCompanies = companies.filter(c => c.sector === currentSector);
+
+        // Limitamos a un máximo de 5 empresas para evitar saturar de peticiones (Riesgo de rendimiento)
+        // En una implementación futura, el backend debería proveer un endpoint de comparación.
+        const topCompanies = sectorCompanies.slice(0, 10);
+
+        const dataPromises = topCompanies.map(comp => 
+            getReportesByEmpresa(comp.id_empresa, { page_size: 1 })
+        );
         const results = await Promise.all(dataPromises);
         
         const newChartData = [];
         
-        for (let i = 0; i < sectorCompanies.length; i++) {
-          const compMetrics = results[i];
-          if (Array.isArray(compMetrics) && compMetrics.length > 0) {
-            // 3. Seleccionar únicamente el último reporte por empresa:
-            // ordenar por fecha y tomar el más reciente
-            const sortedMetrics = [...compMetrics].sort((a: any, b: any) => {
-              const gestionA = Number(a.gestion);
-              const gestionB = Number(b.gestion);
-              const trimA = Number(a.trimestre);
-              const trimB = Number(b.trimestre);
-              
-              if (gestionA !== gestionB) return gestionB - gestionA;
-              return trimB - trimA;
-            });
-            const latest = sortedMetrics[0];
+        for (let i = 0; i < topCompanies.length; i++) {
+          const response = results[i];
+          if (response.results.length > 0) {
+            const latest = response.results[0];
+            const metrics = mapReporteToChartData(latest);
             
-            // 4. Generar el dataset final: 1 punto por empresa
             newChartData.push({
-              name: sectorCompanies[i].codigo_bbv,
-              liquidez: Number(latest.liquidez_corriente) || 0,
-              endeudamiento: Number(latest.endeudamiento) || 0
+              name: topCompanies[i].codigo_bbv,
+              ...metrics
             });
           }
         }
@@ -107,7 +103,7 @@ export default function SectorComparison({ companies, selectedCompanyId }: Secto
         opacity: 0.08
       }
     },
-    colors: ['#3b82f6', '#f59e0b'], // Azul y Naranja
+    colors: ['#3b82f6', '#f59e0b'], 
     fill: {
       type: 'gradient',
       gradient: {
@@ -125,7 +121,7 @@ export default function SectorComparison({ companies, selectedCompanyId }: Secto
         columnWidth: '55%',
         borderRadius: 6,
         dataLabels: {
-          position: 'top', // Etiquetas arriba de la barra
+          position: 'top', 
         },
       },
     },
@@ -136,7 +132,7 @@ export default function SectorComparison({ companies, selectedCompanyId }: Secto
       style: {
         fontSize: '11px',
         fontWeight: 600,
-        colors: ['#87909e'], // Color neutro para adaptarse a modo claro/oscuro
+        colors: ['#87909e'], 
       },
       background: {
         enabled: false,
@@ -177,51 +173,46 @@ export default function SectorComparison({ companies, selectedCompanyId }: Secto
       horizontalAlign: 'right',
       labels: { colors: '#6b7280' },
       markers: {
-        radius: 12,
+        offsetX: 0,
       }
     },
     grid: {
       borderColor: '#e5e7eb',
       strokeDashArray: 4,
       padding: {
-        top: 20, // Dar espacio para los dataLabels
+        top: 20, 
       }
     },
     tooltip: {
-      theme: 'dark',
       y: {
-        formatter: function (val) {
-          return val.toFixed(2);
-        },
-      },
-    },
+        formatter: (val) => val.toFixed(3)
+      }
+    }
   };
 
   const series = [
     {
       name: 'Liquidez Corriente',
-      data: chartData.map(d => d.liquidez),
+      data: chartData.map(d => d.liquidez)
     },
     {
       name: 'Endeudamiento',
-      data: chartData.map(d => d.endeudamiento),
-    },
+      data: chartData.map(d => d.endeudamiento)
+    }
   ];
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-brand-500/10 hover:border-brand-500/30">
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div>
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white/90">
-            Comparación Sectorial
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Posición de la empresa frente a pares del mismo sector
-          </p>
-        </div>
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] mb-6">
+      <div className="mb-6">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-white/90">
+          Comparativa Sectorial (Último Período)
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Ratio de Liquidez y Endeudamiento frente a entidades del mismo sector.
+        </p>
       </div>
-      <div>
-        <ReactApexChart options={options} series={series} type="bar" height={350} />
+      <div className="h-80">
+        <ReactApexChart options={options} series={series} type="bar" height="100%" />
       </div>
     </div>
   );

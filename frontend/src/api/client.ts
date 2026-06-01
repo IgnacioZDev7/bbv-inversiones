@@ -67,15 +67,4 @@ apiClient.interceptors.response.use(
   }
 );
 
-export const fetchCompanies = async () => {
-  const response = await apiClient.get('companies/');
-  return response.data;
-};
-
-export const fetchMetrics = async (empresaId?: string) => {
-  const url = empresaId ? `metrics/?empresa=${empresaId}` : 'metrics/';
-  const response = await apiClient.get(url);
-  return response.data;
-};
-
 export default apiClient;

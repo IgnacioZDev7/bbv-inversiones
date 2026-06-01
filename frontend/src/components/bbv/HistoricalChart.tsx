@@ -1,4 +1,3 @@
-import React from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 
@@ -94,7 +93,7 @@ export default function HistoricalChart({ metrics }: HistoricalChartProps) {
       position: 'top',
       horizontalAlign: 'right',
       labels: { colors: '#94a3b8' },
-      markers: { radius: 12 }
+      markers: { offsetX: 0 }
     },
     tooltip: {
       theme: 'dark',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
 import { useFinancialSimulator } from '../../agents/useFinancialSimulator';
 

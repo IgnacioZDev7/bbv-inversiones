@@ -28,6 +28,9 @@ class SectorEmpresaViewSet(ModelViewSet):
 class EmpresaViewSet(ModelViewSet):
     queryset = Empresa.objects.all()
     serializer_class = EmpresaSerializer
+    filterset_fields = ['sector']
+    search_fields = ['nombre', 'codigo_bbv', 'sigla']
+    ordering_fields = ['nombre', 'codigo_bbv', 'created_at']
 
     def get_permissions(self):
         """
@@ -104,6 +107,8 @@ class EmpresaViewSet(ModelViewSet):
 
 
 class ReporteFinancieroViewSet(ModelViewSet):
-    queryset = ReporteFinanciero.objects.all()
+    queryset = ReporteFinanciero.objects.all().order_by('-created_at')
     serializer_class = ReporteFinancieroSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['empresa', 'gestion', 'trimestre', 'estado_procesamiento']
+    ordering_fields = ['gestion', 'trimestre', 'created_at']

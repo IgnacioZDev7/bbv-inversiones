@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PageMeta from '../components/common/PageMeta';
-import { fetchCompanies, fetchMetrics } from '../api/client';
+import { getEmpresas, getReportesByEmpresa } from '../services/apiServices';
 import FinancialChart from '../components/bbv/FinancialChart';
 
 export default function TestChart() {
@@ -12,11 +12,17 @@ export default function TestChart() {
     const loadTestData = async () => {
       try {
         setLoading(true);
-        const companies = await fetchCompanies();
-        if (companies && companies.length > 0) {
-          // Tomar la primera empresa disponible para el test
-          const data = await fetchMetrics(String(companies[0].id));
-          setMetrics(data);
+        const response = await getEmpresas({ page_size: 1 });
+        if (response.results.length > 0) {
+          const company = response.results[0];
+          const reportes = await getReportesByEmpresa(company.id_empresa, { page_size: 20 });
+          // Mapeo simple para FinancialChart si es necesario
+          const mapped = reportes.results.map(r => ({
+              ...r.datos_extraidos_json,
+              gestion: r.gestion,
+              trimestre: r.trimestre
+          }));
+          setMetrics(mapped);
         }
       } catch (err) {
         console.error(err);

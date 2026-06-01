@@ -9,9 +9,10 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 // Admin
-import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit } from "./pages/Admin";
+import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit, CompanyDetail } from "./pages/Admin";
 // Analyst
-import { AnalystDashboard, AnalystCompanies, FinancialReports, Indicators, ManualPipeline } from "./pages/Analyst";
+import { AnalystDashboard, AnalystCompanies, FinancialReports, ManualPipeline } from "./pages/Analyst";
+import Indicators from "./pages/Analyst/Indicators";
 // Auditor
 import { AuditorDashboard, ProcessHistory, GeneratedReports, Logs } from "./pages/Auditor";
 // Investor
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UsersManagement />} />
               <Route path="/admin/companies" element={<CompaniesManagement />} />
+              <Route path="/admin/companies/:id" element={<CompanyDetail />} />
               <Route path="/admin/sectors" element={<SectorsManagement />} />
               <Route path="/admin/audit" element={<ProcessAudit />} />
             </Route>
