@@ -76,6 +76,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Configuración de allauth
+SOCIALACCOUNT_ADAPTER = 'apps.accounts.adapters.CustomSocialAccountAdapter'
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [

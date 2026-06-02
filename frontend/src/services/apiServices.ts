@@ -25,6 +25,19 @@ export const getEmpresas = (params?: EmpresaParams) =>
     .get<PaginatedResponse<Empresa>>('/empresas/', { params })
     .then((r) => r.data);
 
+export const getAllEmpresas = async (params?: Omit<EmpresaParams, 'page'>): Promise<Empresa[]> => {
+  const results: Empresa[] = [];
+  let page = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const res = await getEmpresas({ ...params, page });
+    results.push(...res.results);
+    hasMore = res.next !== null;
+    page++;
+  }
+  return results;
+};
+
 export const getEmpresaById = (id: number) =>
   apiClient
     .get<Empresa>(`/empresas/${id}/`)
@@ -34,10 +47,23 @@ export const getEmpresaById = (id: number) =>
 // SECTORES
 // ──────────────────────────────────────────────────────────────
 
-export const getSectores = () =>
+export const getSectores = (params?: { page?: number }) =>
   apiClient
-    .get<PaginatedResponse<SectorEmpresa>>('/sectores/')
+    .get<PaginatedResponse<SectorEmpresa>>('/sectores/', { params })
     .then((r) => r.data);
+
+export const getAllSectores = async (): Promise<SectorEmpresa[]> => {
+  const results: SectorEmpresa[] = [];
+  let page = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const res = await getSectores({ page });
+    results.push(...res.results);
+    hasMore = res.next !== null;
+    page++;
+  }
+  return results;
+};
 
 // ──────────────────────────────────────────────────────────────
 // REPORTES FINANCIEROS

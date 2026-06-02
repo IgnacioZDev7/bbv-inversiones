@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router';
+import { useSearchParams } from 'react-router';
 import {
   ResponsiveContainer,
   LineChart,
@@ -17,6 +17,11 @@ import {
 import { useApi } from '../../hooks/useApi';
 import { getEmpresas, getReportesByEmpresa } from '../../services/apiServices';
 import type { Empresa, PaginatedResponse, ReporteFinanciero } from '../../types/api';
+
+// Toolkit Financiero Consolidado
+import FinancialAnalysis from '../../components/financials/FinancialAnalysis';
+import RiskGauge from '../../components/financials/RiskGauge';
+import SectorComparison from '../../components/financials/SectorComparison';
 
 // ── Formateadores ───────────────────────────────────────────────
 const fmtBS = (v: number) =>
@@ -45,22 +50,12 @@ const toChartPoint = (r: ReporteFinanciero) => {
   const label = r.trimestre ? `${r.gestion} T${r.trimestre}` : `${r.gestion}`;
   const d = r.datos_extraidos_json as Record<string, unknown> | null;
   
-  // Claves reales del backend (Balance)
   const activo = extractFinancialValue(d, 'total_activo');
   const pasivo = extractFinancialValue(d, 'total_pasivo');
   const patrimonio = extractFinancialValue(d, 'total_patrimonio');
   const ac = extractFinancialValue(d, 'total_activo_corriente');
   const pc = extractFinancialValue(d, 'total_pasivo_corriente');
   const anc = extractFinancialValue(d, 'total_activo_no_corriente');
-  const pnc = extractFinancialValue(d, 'total_pasivo_no_corriente');
-
-  // Indicadores Derivados
-  const endeudamiento = activo > 0 ? (pasivo / activo) : 0;
-  const capitalTrabajo = ac - pc;
-
-  // Claves para el futuro (Estado de Resultados)
-  const ingresos = extractFinancialValue(d, 'ingresos_totales');
-  const utilidad = extractFinancialValue(d, 'utilidad_neta');
 
   return {
     label,
@@ -72,16 +67,12 @@ const toChartPoint = (r: ReporteFinanciero) => {
     ac,
     pc,
     anc,
-    pnc,
-    endeudamiento,
-    capitalTrabajo,
-    // Preparado para futuro
-    ingresos,
-    utilidad,
+    endeudamiento: activo > 0 ? (pasivo / activo) : 0,
+    capitalTrabajo: ac - pc,
   };
 };
 
-// ── Selector de empresa (dropdown) ─────────────────────────────
+// ── Selector de empresa ────────────────────────────────────────
 const EmpresaSelector: React.FC<{
   empresas: Empresa[];
   selectedId: number | null;
@@ -101,7 +92,6 @@ const EmpresaSelector: React.FC<{
   </select>
 );
 
-// ── Componente gráfico genérico ─────────────────────────────────
 const ChartCard: React.FC<{ title: string; children: React.ReactNode; subtitle?: string }> = ({ title, subtitle, children }) => (
   <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 flex flex-col h-[320px]">
     <div className="mb-4">
@@ -114,38 +104,32 @@ const ChartCard: React.FC<{ title: string; children: React.ReactNode; subtitle?:
   </div>
 );
 
-// ── Dashboard Financiero ────────────────────────────────────────
 const Indicators: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(
     searchParams.get('empresa') ? Number(searchParams.get('empresa')) : null
   );
 
-  // Lista de empresas para el selector
-  const { data: empresasData } = useApi<PaginatedResponse<Empresa>>(
-    () => getEmpresas({ page_size: 200 }),
-    []
-  );
+  const { data: empresasData } = useApi<PaginatedResponse<Empresa>>(() => getEmpresas({ page_size: 200 }), []);
   const empresas = empresasData?.results ?? [];
 
-  // Reportes de la empresa seleccionada — FLUJO OBLIGATORIO
   const fetchReportes = useCallback(() => {
     if (!selectedEmpresaId) return Promise.resolve({ count: 0, next: null, previous: null, results: [] });
     return getReportesByEmpresa(selectedEmpresaId, { page_size: 100 });
   }, [selectedEmpresaId]);
 
-  const { data: reportesData, isLoading, error } = useApi<PaginatedResponse<ReporteFinanciero>>(
-    fetchReportes,
-    [fetchReportes]
+  const { data: reportesData, isLoading } = useApi<PaginatedResponse<ReporteFinanciero>>(fetchReportes, [fetchReportes]);
+
+  const reportesProcesados = useMemo(() => 
+    (reportesData?.results ?? []).filter(r => r.estado_procesamiento === 'PROCESADO'),
+    [reportesData]
   );
 
-  const chartData = useMemo(
-    () =>
-      (reportesData?.results ?? [])
-        .filter((r) => r.estado_procesamiento === 'PROCESADO' && r.datos_extraidos_json)
+  const chartData = useMemo(() => 
+    reportesProcesados
         .map(toChartPoint)
         .sort((a, b) => a.gestion - b.gestion || (a.trimestre ?? 0) - (b.trimestre ?? 0)),
-    [reportesData]
+    [reportesProcesados]
   );
 
   const selectedEmpresa = empresas.find((e) => e.id_empresa === selectedEmpresaId);
@@ -159,72 +143,39 @@ const Indicators: React.FC = () => {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Análisis de Indicadores</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Visualización de estados financieros históricos (Balance General)
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Panel de Análisis Avanzado</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Interpretación de solvencia y estructura de capital</p>
         </div>
-        <EmpresaSelector
-          empresas={empresas}
-          selectedId={selectedEmpresaId}
-          onSelect={handleEmpresaSelect}
-        />
+        <EmpresaSelector empresas={empresas} selectedId={selectedEmpresaId} onSelect={handleEmpresaSelect} />
       </div>
 
       {!selectedEmpresaId && (
         <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-16 text-center bg-gray-50 dark:bg-white/[0.02]">
-          <svg className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">Selecciona una entidad para comenzar el análisis financiero.</p>
+          <p className="text-gray-500 dark:text-gray-400">Selecciona una entidad para visualizar el Toolkit Financiero.</p>
         </div>
       )}
 
-      {selectedEmpresaId && !isLoading && chartData.length === 0 && (
-        <div className="rounded-2xl border border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-6 text-center">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            {selectedEmpresa?.nombre} no cuenta con reportes de Balance General procesados disponibles.
-          </p>
-          <Link
-            to={`/admin/companies/${selectedEmpresaId}`}
-            className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Ver estado de los reportes →
-          </Link>
+      {selectedEmpresaId && !isLoading && reportesProcesados.length === 0 && (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-center dark:bg-amber-900/10 dark:border-amber-900/20">
+          <p className="text-sm text-amber-700 dark:text-amber-400">No hay reportes de Balance General para {selectedEmpresa?.nombre}.</p>
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-4 text-sm text-red-700 dark:text-red-400">
-          {error}
-        </div>
-      )}
-
-      {isLoading && selectedEmpresaId && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 h-72 animate-pulse">
-              <div className="h-4 w-40 rounded bg-gray-100 dark:bg-gray-700 mb-4" />
-              <div className="h-full rounded bg-gray-100 dark:bg-gray-700" />
+      {!isLoading && reportesProcesados.length > 0 && (
+        <div className="animate-fade-in space-y-6">
+          {/* Fila 1: Toolkit de Diagnóstico */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+                <FinancialAnalysis reportes={reportesProcesados} />
             </div>
-          ))}
-        </div>
-      )}
-
-      {!isLoading && chartData.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 px-1">
-            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-            <span className="font-bold text-gray-900 dark:text-white">{selectedEmpresa?.nombre}</span>
-            <span className="text-xs text-gray-400">|</span>
-            <span className="text-xs font-mono text-gray-500">{selectedEmpresa?.codigo_bbv}</span>
-            <span className="text-xs text-gray-400">|</span>
-            <span className="text-xs text-gray-500">{chartData.length} períodos (Balance)</span>
+            <div>
+                <RiskGauge reportes={reportesProcesados} />
+            </div>
           </div>
 
+          {/* Fila 2: Gráficos de Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 1. Activo vs Pasivo (Balance Real) */}
-            <ChartCard title="Balance: Activos vs Pasivos (Bs)" subtitle="Total de activos comparado con obligaciones totales.">
+            <ChartCard title="Estructura: Activo vs Pasivo (Bs)">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
@@ -238,8 +189,7 @@ const Indicators: React.FC = () => {
               </ResponsiveContainer>
             </ChartCard>
 
-            {/* 2. Patrimonio Neto (Solvencia) */}
-            <ChartCard title="Evolución del Patrimonio Neto (Bs)" subtitle="Recursos propios de la entidad a través del tiempo.">
+            <ChartCard title="Evolución del Patrimonio Neto (Bs)">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
@@ -256,63 +206,24 @@ const Indicators: React.FC = () => {
                 </AreaChart>
               </ResponsiveContainer>
             </ChartCard>
+          </div>
 
-            {/* 3. Composición del Activo (Corriente vs No Corriente) */}
-            <ChartCard title="Estructura del Activo (Bs)" subtitle="Distribución entre activos líquidos (corrientes) e inversiones fijas.">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                  <Bar dataKey="ac" name="A. Corriente" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} barSize={25} />
-                  <Bar dataKey="anc" name="A. No Corriente" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} barSize={25} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* 4. Ratio de Endeudamiento (Calculado) */}
-            <ChartCard title="Ratio de Endeudamiento (Apalancamiento)" subtitle="Relación Pasivo / Activo. Valores bajos indican mayor independencia financiera.">
+          {/* Fila 3: Análisis Sectorial y composición */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {selectedEmpresaId && <SectorComparison companies={empresas} selectedCompanyId={selectedEmpresaId} />}
+            <ChartCard title="Ratio de Endeudamiento (Apalancamiento)" subtitle="Valores < 0.6 sugieren independencia financiera.">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 1]} />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtDecimal(Number(v))} />
-                  <Line type="monotone" dataKey="endeudamiento" name="Ratio Endeudamiento" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} />
+                  <Line type="monotone" dataKey="endeudamiento" name="Ratio" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>
-
-            {/* 5. Capital de Trabajo (Calculado) */}
-            <ChartCard title="Capital de Trabajo (Bs)" subtitle="Activo Corriente - Pasivo Corriente. Mide la liquidez operativa inmediata.">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCap" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
-                  <Area type="step" dataKey="capitalTrabajo" name="Cap. Trabajo" stroke="#f59e0b" fillOpacity={1} fill="url(#colorCap)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            {/* FUTURO: Indicadores de Estado de Resultados (Habilitar cuando el pipeline procese ER)
-            <ChartCard title="Eficiencia Operativa" subtitle="Ingresos vs Utilidad. No disponible en reportes de solo Balance.">
-              <div className="flex items-center justify-center h-full text-xs text-gray-400 bg-gray-50/50 dark:bg-white/[0.01] rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
-                 Habilitado tras procesamiento de Estado de Resultados
-              </div>
-            </ChartCard>
-            */}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

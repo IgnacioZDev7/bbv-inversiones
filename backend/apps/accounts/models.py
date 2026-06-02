@@ -33,7 +33,11 @@ class Usuario(AbstractUser):
         default=""
     )
 
-    apellido_paterno = models.CharField(max_length=100)
+    apellido_paterno = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
 
     apellido_materno = models.CharField(
         max_length=100,
@@ -43,8 +47,17 @@ class Usuario(AbstractUser):
 
     ci = models.CharField(
         max_length=30,
-        unique=True
+        unique=True,
+        null=True,
+        blank=True
     )
+
+    @property
+    def is_profile_complete(self):
+        """
+        Valida si el usuario tiene los datos mínimos para operar.
+        """
+        return all([self.ci, self.celular, self.apellido_paterno])
 
     fecha_nacimiento = models.DateField(
         blank=True,

@@ -1,12 +1,13 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter as Router, Routes, Route } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import Unauthorized from "./pages/AuthPages/Unauthorized";
 import NotFound from "./pages/OtherPage/NotFound";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import Home from "./pages/Dashboard/Home";
 
 // Admin
 import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit, CompanyDetail } from "./pages/Admin";
@@ -17,21 +18,6 @@ import Indicators from "./pages/Analyst/Indicators";
 import { AuditorDashboard, ProcessHistory, GeneratedReports, Logs } from "./pages/Auditor";
 // Investor
 import { InvestorDashboard, InvestorCompanies, InvestorIndicators, Simulations, Recommendations } from "./pages/Investor";
-
-const RootRedirect = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) return null;
-  if (!isAuthenticated || !user) return <Navigate to="/signin" replace />;
-  
-  switch(user.role) {
-    case 'Administrador': return <Navigate to="/admin" replace />;
-    case 'Analista': return <Navigate to="/analyst" replace />;
-    case 'Auditor': return <Navigate to="/auditor" replace />;
-    case 'Inversionista': return <Navigate to="/investor" replace />;
-    default: return <Navigate to="/unauthorized" replace />;
-  }
-};
 
 export default function App() {
   return (
@@ -44,7 +30,9 @@ export default function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           <Route element={<AppLayout />}>
-            <Route index path="/" element={<RootRedirect />} />
+            <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Analista', 'Auditor', 'Inversionista']} />}>
+              <Route path="/" element={<Home />} />
+            </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
