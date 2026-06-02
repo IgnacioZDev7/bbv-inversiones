@@ -83,6 +83,19 @@ export const getReportesByEmpresa = (empresaId: number, params?: Omit<ReportePar
 export const getLatestReportes = (limit: number = 5) =>
   getReportes({ page_size: limit });
 
+export const getAllReportes = async (params?: Omit<ReporteParams, 'page'>): Promise<ReporteFinanciero[]> => {
+  const results: ReporteFinanciero[] = [];
+  let page = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const res = await getReportes({ ...params, page });
+    results.push(...res.results);
+    hasMore = res.next !== null;
+    page++;
+  }
+  return results;
+};
+
 // ──────────────────────────────────────────────────────────────
 // USUARIOS
 // ──────────────────────────────────────────────────────────────
@@ -92,6 +105,24 @@ export const getUsuarios = (params?: { page?: number }) =>
     .get<PaginatedResponse<Usuario>>('/usuarios/', { params })
     .then((r) => r.data);
 
+export const getCurrentUser = () =>
+  apiClient
+    .get<Usuario>('/accounts/me/')
+    .then((r) => r.data);
+
+export const getAllUsuarios = async (): Promise<Usuario[]> => {
+  const results: Usuario[] = [];
+  let page = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const res = await getUsuarios({ page });
+    results.push(...res.results);
+    hasMore = res.next !== null;
+    page++;
+  }
+  return results;
+};
+
 // ──────────────────────────────────────────────────────────────
 // PIPELINE
 // ──────────────────────────────────────────────────────────────
@@ -99,6 +130,25 @@ export const getUsuarios = (params?: { page?: number }) =>
 export const ejecutarPipeline = (empresaId: number, gestion: number, trimestre: number) =>
   apiClient
     .post(`/empresas/${empresaId}/actualizar-reportes/`, { gestion, trimestre })
+    .then((r) => r.data);
+
+// ──────────────────────────────────────────────────────────────
+// PERFIL — Completar/actualizar perfil del usuario autenticado
+// ──────────────────────────────────────────────────────────────
+
+export interface CompleteProfilePayload {
+  nombre?: string;
+  apellido_paterno?: string;
+  apellido_materno?: string;
+  email?: string;
+  ci?: string;
+  celular?: string;
+  fecha_nacimiento?: string;
+}
+
+export const completarPerfil = (data: CompleteProfilePayload) =>
+  apiClient
+    .patch<Usuario>('/usuarios/me/completar_perfil/', data)
     .then((r) => r.data);
 
 // ──────────────────────────────────────────────────────────────

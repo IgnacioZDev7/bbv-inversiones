@@ -17,6 +17,7 @@ import {
 import { useApi } from '../../hooks/useApi';
 import { getEmpresas, getReportesByEmpresa } from '../../services/apiServices';
 import type { Empresa, PaginatedResponse, ReporteFinanciero } from '../../types/api';
+import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 // Toolkit Financiero Consolidado
 import FinancialAnalysis from '../../components/financials/FinancialAnalysis';
@@ -175,53 +176,61 @@ const Indicators: React.FC = () => {
 
           {/* Fila 2: Gráficos de Balance */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard title="Estructura: Activo vs Pasivo (Bs)">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                  <Bar dataKey="activo" name="Activo" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="pasivo" name="Pasivo" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            <ErrorBoundary componentName="BalanceChart">
+              <ChartCard title="Estructura: Activo vs Pasivo (Bs)">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                    <Bar dataKey="activo" name="Activo" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="pasivo" name="Pasivo" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </ErrorBoundary>
 
-            <ChartCard title="Evolución del Patrimonio Neto (Bs)">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorPat" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
-                  <Area type="monotone" dataKey="patrimonio" name="Patrimonio" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorPat)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            <ErrorBoundary componentName="PatrimonioChart">
+              <ChartCard title="Evolución del Patrimonio Neto (Bs)">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorPat" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={fmtBS} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtBS(Number(v))} />
+                    <Area type="monotone" dataKey="patrimonio" name="Patrimonio" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorPat)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </ErrorBoundary>
           </div>
 
           {/* Fila 3: Análisis Sectorial y composición */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {selectedEmpresaId && <SectorComparison companies={empresas} selectedCompanyId={selectedEmpresaId} />}
-            <ChartCard title="Ratio de Endeudamiento (Apalancamiento)" subtitle="Valores < 0.6 sugieren independencia financiera.">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 1]} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtDecimal(Number(v))} />
-                  <Line type="monotone" dataKey="endeudamiento" name="Ratio" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            <ErrorBoundary componentName="SectorComparison">
+              {selectedEmpresaId && <SectorComparison companies={empresas} selectedCompanyId={selectedEmpresaId} />}
+            </ErrorBoundary>
+            <ErrorBoundary componentName="EndeudamientoChart">
+              <ChartCard title="Ratio de Endeudamiento (Apalancamiento)" subtitle="Valores < 0.6 sugieren independencia financiera.">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 1]} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtDecimal(Number(v))} />
+                    <Line type="monotone" dataKey="endeudamiento" name="Ratio" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </ErrorBoundary>
           </div>
         </div>
       )}

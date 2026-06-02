@@ -8,9 +8,12 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Home from "./pages/Dashboard/Home";
+import CompleteProfile from "./pages/Profile/CompleteProfile";
+import { CompanyDetail } from "./pages/CompanyDetail";
 
 // Admin
-import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit, CompanyDetail } from "./pages/Admin";
+import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit } from "./pages/Admin";
+import AdminCompanyDetail from "./pages/Admin/CompanyDetail";
 // Analyst
 import { AnalystDashboard, AnalystCompanies, FinancialReports, ManualPipeline } from "./pages/Analyst";
 import Indicators from "./pages/Analyst/Indicators";
@@ -29,20 +32,25 @@ export default function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
+          {/* Public company detail - accessible to all authenticated users */}
           <Route element={<AppLayout />}>
             <Route element={<ProtectedRoute allowedRoles={['Administrador', 'Analista', 'Auditor', 'Inversionista']} />}>
               <Route path="/" element={<Home />} />
+              <Route path="/complete-profile" element={<CompleteProfile />} />
+              <Route path="/company/:id" element={<CompanyDetail />} />
             </Route>
 
+            {/* Admin */}
             <Route element={<ProtectedRoute allowedRoles={['Administrador']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UsersManagement />} />
               <Route path="/admin/companies" element={<CompaniesManagement />} />
-              <Route path="/admin/companies/:id" element={<CompanyDetail />} />
+              <Route path="/admin/companies/:id" element={<AdminCompanyDetail />} />
               <Route path="/admin/sectors" element={<SectorsManagement />} />
               <Route path="/admin/audit" element={<ProcessAudit />} />
             </Route>
 
+            {/* Analyst */}
             <Route element={<ProtectedRoute allowedRoles={['Analista']} />}>
               <Route path="/analyst" element={<AnalystDashboard />} />
               <Route path="/analyst/companies" element={<AnalystCompanies />} />
@@ -51,6 +59,7 @@ export default function App() {
               <Route path="/analyst/pipeline" element={<ManualPipeline />} />
             </Route>
 
+            {/* Auditor */}
             <Route element={<ProtectedRoute allowedRoles={['Auditor']} />}>
               <Route path="/auditor" element={<AuditorDashboard />} />
               <Route path="/auditor/history" element={<ProcessHistory />} />
@@ -58,6 +67,7 @@ export default function App() {
               <Route path="/auditor/logs" element={<Logs />} />
             </Route>
 
+            {/* Investor */}
             <Route element={<ProtectedRoute allowedRoles={['Inversionista']} />}>
               <Route path="/investor" element={<InvestorDashboard />} />
               <Route path="/investor/companies" element={<InvestorCompanies />} />

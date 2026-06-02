@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from api.views.financials import EmpresaViewSet, SectorEmpresaViewSet, ReporteFinancieroViewSet
 from api.views.accounts import UsuarioViewSet
+from api.views.analytics import IndicadorViewSet, SimulacionViewSet, RecomendacionViewSet
 from apps.accounts.views import GoogleLogin, UserMeView
 
 router = DefaultRouter()
@@ -9,6 +10,9 @@ router.register(r'usuarios', UsuarioViewSet, basename='usuario')
 router.register(r'empresas', EmpresaViewSet, basename='empresa')
 router.register(r'sectores', SectorEmpresaViewSet, basename='sector')
 router.register(r'reportes', ReporteFinancieroViewSet, basename='reporte')
+router.register(r'indicadores', IndicadorViewSet, basename='indicador')
+router.register(r'simulator', SimulacionViewSet, basename='simulacion')
+router.register(r'recomendaciones', RecomendacionViewSet, basename='recomendacion')
 
 urlpatterns = [
     path('', include(router.urls)),

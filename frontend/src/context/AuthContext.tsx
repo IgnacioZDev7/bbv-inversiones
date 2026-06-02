@@ -48,12 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const loggedUser: User = {
           //id: data.id?.toString(),
           id: data.id_usuario?.toString(),
-          name: data.first_name || data.username || data.email,
+          name: data.nombre || data.first_name || data.username || data.email,
           email: data.email,
           role: mappedRole,
           groups: userGroups,
-          first_name: data.first_name,
-          last_name: data.last_name,
+          first_name: data.nombre || data.first_name,
+          last_name: data.apellido_paterno || data.last_name,
         };
 
         setUser(loggedUser);

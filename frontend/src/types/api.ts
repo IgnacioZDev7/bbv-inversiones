@@ -70,6 +70,8 @@ export interface Usuario {
   activo: boolean;
   groups: number[];
   group_names: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 // Parámetros de consulta tipados para el frontend

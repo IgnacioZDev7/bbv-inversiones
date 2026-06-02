@@ -68,3 +68,30 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class CompletarPerfilSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['ci', 'celular', 'apellido_paterno', 'apellido_materno']
+
+    def validate_ci(self, value):
+        if not value:
+            raise serializers.ValidationError("El CI es obligatorio para completar el perfil.")
+        # La unicidad ya la valida el ModelSerializer por el campo unique=True del modelo, 
+        # pero siendo explícitos para mayor claridad en el error de Sprint.
+        if Usuario.objects.exclude(pk=self.instance.pk).filter(ci=value).exists():
+            raise serializers.ValidationError("Este CI ya está registrado.")
+        return value
+
+    def validate_apellido_paterno(self, value):
+        if not value:
+            raise serializers.ValidationError("El apellido paterno es obligatorio.")
+        return value
+
+    def validate_celular(self, value):
+        if not value:
+            raise serializers.ValidationError("El número de celular es obligatorio.")
+        if len(value) < 7:
+            raise serializers.ValidationError("Número de celular no válido.")
+        return value

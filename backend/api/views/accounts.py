@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from apps.accounts.models import Usuario
 from django.contrib.auth.models import Group
-from api.serializers.accounts import UsuarioSerializer
+from api.serializers.accounts import UsuarioSerializer, CompletarPerfilSerializer
 from core.permissions import IsAdministrador
 
 class UsuarioViewSet(ModelViewSet):
@@ -16,6 +16,34 @@ class UsuarioViewSet(ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy", "cambiar_grupo"]:
             return [IsAuthenticated(), IsAdministrador()]
         return [IsAuthenticated()]
+
+    @action(detail=False, methods=['get', 'patch'], url_path='me')
+    def me(self, request):
+        """
+        Retorna o actualiza el perfil del usuario autenticado.
+        """
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch'], url_path='me/completar_perfil')
+    def completar_perfil(self, request):
+        """
+        Endpoint dedicado para el onboarding de nuevos usuarios (especialmente OAuth).
+        Valida CI, celular y apellido paterno.
+        """
+        serializer = CompletarPerfilSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        # Devolvemos el usuario completo tras la actualización
+        full_serializer = UsuarioSerializer(request.user)
+        return Response(full_serializer.data)
 
     @action(detail=True, methods=['post'], url_path='cambiar-grupo')
     def cambiar_grupo(self, request, pk=None):

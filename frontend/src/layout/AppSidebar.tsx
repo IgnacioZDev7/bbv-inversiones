@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useMemo, type FC, type ReactNode } from "react";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useLocation } from "react-router";
 import { getAllEmpresas, getAllSectores } from "../services/apiServices";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 
 import {
   GridIcon,
+  UserCircleIcon,
   PieChartIcon,
-  BoxCubeIcon,
   ChevronDownIcon,
   AlertIcon,
   GroupIcon,
@@ -195,7 +195,31 @@ const MENU_CONFIG: NavItem[] = [
   {
     name: "Dashboard",
     icon: <GridIcon />,
-    path: "/",
+    path: "/admin",
+    allowedRoles: ['Administrador'],
+  },
+  {
+    name: "Dashboard",
+    icon: <GridIcon />,
+    path: "/analyst",
+    allowedRoles: ['Analista'],
+  },
+  {
+    name: "Dashboard",
+    icon: <GridIcon />,
+    path: "/investor",
+    allowedRoles: ['Inversionista'],
+  },
+  {
+    name: "Dashboard",
+    icon: <GridIcon />,
+    path: "/auditor",
+    allowedRoles: ['Auditor'],
+  },
+  {
+    name: "Completar perfil",
+    icon: <UserCircleIcon />,
+    path: "/complete-profile",
     allowedRoles: ALL_ROLES,
   },
   {
@@ -203,9 +227,13 @@ const MENU_CONFIG: NavItem[] = [
     icon: <GroupIcon />,
     allowedRoles: ['Administrador'],
     subItems: [
+      { name: "Dashboard", path: "/admin" },
+      { name: "Usuarios", path: "/admin/users" },
       { name: "Empresas", path: "/admin/companies" },
       { name: "Sectores", path: "/admin/sectors" },
-      { name: "Usuarios", path: "/admin/users" },
+      { name: "Reportes", path: "/analyst/reports" },
+      { name: "Pipeline", path: "/analyst/pipeline" },
+      { name: "Auditoría", path: "/admin/audit" },
     ],
   },
   {
@@ -213,29 +241,19 @@ const MENU_CONFIG: NavItem[] = [
     icon: <PieChartIcon />,
     allowedRoles: ['Analista'],
     subItems: [
+      { name: "Dashboard", path: "/analyst" },
       { name: "Empresas", path: "/analyst/companies" },
-      { name: "Reportes", path: "/analyst/reports" },
       { name: "Indicadores", path: "/analyst/indicators" },
+      { name: "Reportes", path: "/analyst/reports" },
       { name: "Pipeline", path: "/analyst/pipeline" },
     ],
-  },
-  {
-    name: "Simulación",
-    icon: <BoxCubeIcon />,
-    path: "/simulator",
-    allowedRoles: ['Analista', 'Inversionista'],
-  },
-  {
-    name: "Auditoría",
-    icon: <AlertIcon />,
-    path: "/admin/audit",
-    allowedRoles: ['Administrador'],
   },
   {
     name: "Auditoría",
     icon: <AlertIcon />,
     allowedRoles: ['Auditor'],
     subItems: [
+      { name: "Dashboard", path: "/auditor" },
       { name: "Historial", path: "/auditor/history" },
       { name: "Reportes", path: "/auditor/reports" },
       { name: "Logs", path: "/auditor/logs" },
@@ -246,9 +264,10 @@ const MENU_CONFIG: NavItem[] = [
     icon: <DollarLineIcon />,
     allowedRoles: ['Inversionista'],
     subItems: [
+      { name: "Dashboard", path: "/investor" },
       { name: "Empresas", path: "/investor/companies" },
+      { name: "Watchlist", path: "/investor/companies" },
       { name: "Indicadores", path: "/investor/indicators" },
-      { name: "Simulaciones", path: "/investor/simulations" },
       { name: "Recomendaciones", path: "/investor/recommendations" },
     ],
   },
@@ -257,8 +276,6 @@ const MENU_CONFIG: NavItem[] = [
 const AppSidebar: FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const activeCompanyId = searchParams.get("company");
   const { isExpanded, isHovered, setIsHovered, isMobileOpen } = useSidebar();
 
   const [sectorGroups, setSectorGroups] = useState<SectorGroup[]>([]);
@@ -311,7 +328,7 @@ const AppSidebar: FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const isCompanyActive = (companyId: number) => activeCompanyId === String(companyId);
+  const isCompanyActive = (companyId: number) => location.pathname === `/company/${companyId}`;
 
   const toggleSector = (sectorId: number) => {
     setExpandedSectors(prev => {
@@ -502,7 +519,7 @@ const AppSidebar: FC = () => {
                         {sector.empresas.map((emp) => (
                           <li key={emp.id}>
                             <Link
-                              to={`/?company=${emp.id}`}
+                              to={`/company/${emp.id}`}
                               className={`menu-dropdown-item text-sm py-1.5 transition-colors ${
                                 isCompanyActive(emp.id)
                                   ? "menu-dropdown-item-active font-medium"
