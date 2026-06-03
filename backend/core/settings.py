@@ -214,3 +214,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.Usuario'
+
+# ──────────────────────────────────────────────────────────────
+# AWS — Rekognition y S3 para verificación biométrica
+# Lee variables desde .env via os.environ (cargado por load_dotenv)
+# ──────────────────────────────────────────────────────────────
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME', 'bbv-inversiones-biometrics')
+
+# ──────────────────────────────────────────────────────────────
+# GEMINI — ChatBBV con inteligencia artificial
+# ──────────────────────────────────────────────────────────────
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')

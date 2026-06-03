@@ -35,3 +35,7 @@ joblib==1.5.3
 threadpoolctl==3.6.0
 
 tabulate==0.10.0
+
+boto3>=1.35,<2
+
+google-genai>=2.7,<3
