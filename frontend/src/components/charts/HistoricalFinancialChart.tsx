@@ -169,10 +169,10 @@ function HistoricalFinancialChart({ reports, companyName }: HistoricalFinancialC
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-            Análisis Financiero Histórico
+            An\u00e1lisis Financiero Hist\u00f3rico
           </h3>
           {companyName && (
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 font-medium">

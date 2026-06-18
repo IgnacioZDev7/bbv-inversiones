@@ -14,6 +14,10 @@ import type {
   EmpresaParams,
   ReporteParams,
   DashboardKPIs,
+  ChatRequest,
+  ChatResponse,
+  BiometricVerifyResponse,
+  LivenessCheckResponse,
 } from '../types/api';
 
 // ──────────────────────────────────────────────────────────────
@@ -124,6 +128,20 @@ export const getAllUsuarios = async (): Promise<Usuario[]> => {
 };
 
 // ──────────────────────────────────────────────────────────────
+// CHAT
+// ──────────────────────────────────────────────────────────────
+
+export const sendChatMessage = (data: ChatRequest) =>
+  apiClient
+    .post<ChatResponse>('/chat/', data)
+    .then((r) => r.data);
+
+export const getChatHistory = (conversationId: string) =>
+  apiClient
+    .get<ChatMessage[]>(`/chat/${conversationId}/`)
+    .then((r) => r.data);
+
+// ──────────────────────────────────────────────────────────────
 // PIPELINE
 // ──────────────────────────────────────────────────────────────
 
@@ -173,4 +191,29 @@ export const getDashboardKPIs = async (): Promise<DashboardKPIs> => {
     total_reportes: reportes.data.count,
     total_usuarios: usuarios.data.count,
   };
+};
+
+// ──────────────────────────────────────────────────────────────
+// BIOMETRICS — Verificación facial y liveness
+// ──────────────────────────────────────────────────────────────
+
+export const verifyBiometricIdentity = (carnetImage: File, selfieImage: File) => {
+  const formData = new FormData();
+  formData.append('carnet_image', carnetImage);
+  formData.append('selfie_image', selfieImage);
+  return apiClient
+    .post<BiometricVerifyResponse>('/biometrics/verify/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+};
+
+export const checkLiveness = (selfieImage: File) => {
+  const formData = new FormData();
+  formData.append('selfie_image', selfieImage);
+  return apiClient
+    .post<LivenessCheckResponse>('/biometrics/liveness/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
 };

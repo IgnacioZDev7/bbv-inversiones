@@ -12,6 +12,7 @@ import {
   AlertIcon,
   GroupIcon,
   DollarLineIcon,
+  ChatIcon,
 } from "../icons";
 
 // --- Tipos ---
@@ -217,6 +218,12 @@ const MENU_CONFIG: NavItem[] = [
     allowedRoles: ['Auditor'],
   },
   {
+    name: "Chat",
+    icon: <ChatIcon />,
+    path: "/chat",
+    allowedRoles: ALL_ROLES,
+  },
+  {
     name: "Completar perfil",
     icon: <UserCircleIcon />,
     path: "/complete-profile",
@@ -268,6 +275,7 @@ const MENU_CONFIG: NavItem[] = [
       { name: "Empresas", path: "/investor/companies" },
       { name: "Watchlist", path: "/investor/companies" },
       { name: "Indicadores", path: "/investor/indicators" },
+      { name: "Simulador IA", path: "/investor/simulations" },
       { name: "Recomendaciones", path: "/investor/recommendations" },
     ],
   },

@@ -1,15 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
-import { getEmpresaById, getReportesByEmpresa } from '../../services/apiServices';
+import { getEmpresaById, getReportesByEmpresa, getAllEmpresas } from '../../services/apiServices';
 import type { Empresa, ReporteFinanciero } from '../../types/api';
 import { toFinancialPoint, formatMoneyCompact, formatPercent } from '../../utils/financialMetrics';
 import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
+import FinancialHealthBanner from '../../components/financials/FinancialHealthBanner';
+import FinancialHealth3D from '../../components/visuals/FinancialHealth3D';
+import ComparacionSectorial from '../../components/charts/ComparacionSectorial';
 import HistoricalFinancialChart from '../../components/charts/HistoricalFinancialChart';
 import ActivoVsPasivo from '../../components/charts/ActivoVsPasivo';
 import FinancialRatiosChart from '../../components/charts/FinancialRatiosChart';
+import type { PaginatedResponse } from '../../types/api';
 
 interface Metric {
   activos: number;
@@ -17,6 +21,8 @@ interface Metric {
   patrimonio: number;
   liquidez_corriente: number;
   endeudamiento: number;
+  roa: number | null;
+  roe: number | null;
 }
 
 const mapReporteToMetric = (r: ReporteFinanciero): Metric => {
@@ -31,6 +37,8 @@ const mapReporteToMetric = (r: ReporteFinanciero): Metric => {
       ? Number(d.total_activo_corriente) / Number(d.total_pasivo_corriente)
       : 0,
     endeudamiento: activo > 0 ? pasivo / activo : 0,
+    roa: d.roa != null ? Number(d.roa) : null,
+    roe: d.roe != null ? Number(d.roe) : null,
   };
 };
 
@@ -52,6 +60,7 @@ export default function CompanyDetail() {
   const empresaId = Number(id);
 
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [companies, setCompanies] = useState<Empresa[]>([]);
   const [reports, setReports] = useState<ReporteFinanciero[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +72,12 @@ export default function CompanyDetail() {
     Promise.all([
       getEmpresaById(empresaId),
       getReportesByEmpresa(empresaId, { page_size: 50, estado_procesamiento: 'PROCESADO' }),
+      getAllEmpresas(),
     ])
-      .then(([emp, reportData]) => {
+      .then(([emp, reportData, compData]) => {
         setEmpresa(emp);
         setReports(reportData.results);
+        setCompanies(Array.isArray(compData) ? compData : compData.results);
       })
       .catch(() => setError('Error al conectar con la terminal financiera.'))
       .finally(() => setLoading(false));
@@ -187,19 +198,49 @@ export default function CompanyDetail() {
               />
             </div>
 
+            {/* Banner de salud financiera */}
+            <FinancialHealthBanner
+              liquidez={current.liquidez_corriente}
+              endeudamiento={current.endeudamiento}
+              trendPatrimonio={trendPatrimonio}
+              companyId={empresaId}
+            />
+
             {/* Gráfico principal histórico */}
             <ErrorBoundary componentName="HistoricalFinancialChart">
               <HistoricalFinancialChart reports={reports} companyName={empresa?.nombre} />
             </ErrorBoundary>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               <ErrorBoundary componentName="ComposicionFinanciera">
                 <ActivoVsPasivo data={points} />
               </ErrorBoundary>
               <ErrorBoundary componentName="FinancialRatios">
                 <FinancialRatiosChart data={points} />
               </ErrorBoundary>
+              <FinancialHealth3D
+                score={
+                  current.liquidez_corriente >= 1.2 && current.endeudamiento <= 0.6
+                    ? 85 : current.liquidez_corriente >= 1.0 || current.endeudamiento <= 0.8
+                      ? 55 : 25
+                }
+                liquidez={current.liquidez_corriente}
+                endeudamiento={current.endeudamiento}
+              />
             </div>
+
+            {/* Comparación Sectorial */}
+            <ErrorBoundary componentName="ComparacionSectorial">
+              <ComparacionSectorial
+                companies={companies}
+                currentCompanyId={empresaId}
+                currentSector={empresa?.sector}
+                currentEndeudamiento={current.endeudamiento}
+                currentLiquidez={current.liquidez_corriente}
+                currentRoa={current.roa}
+                currentRoe={current.roe}
+              />
+            </ErrorBoundary>
           </div>
         )}
       </div>

@@ -1,11 +1,180 @@
 {
   "version": "2.0.0",
-  "darkMode": false,
+  "darkMode": true,
   "gridEnabling": false,
   "currentViewName": null,
   "defaultView": {
     "detailLevel": "All",
-    "tablePositions": [],
+    "tablePositions": [
+      {
+        "name": "genero",
+        "schemaName": "public",
+        "x": 1645.826171875,
+        "y": 12
+      },
+      {
+        "name": "sector_empresa",
+        "schemaName": "public",
+        "x": 1645.826171875,
+        "y": 282
+      },
+      {
+        "name": "usuario",
+        "schemaName": "public",
+        "x": 2155.56982421875,
+        "y": 12
+      },
+      {
+        "name": "direccion",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 12
+      },
+      {
+        "name": "perfil_usuario",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 378
+      },
+      {
+        "name": "sesion_usuario",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 616
+      },
+      {
+        "name": "empresa",
+        "schemaName": "public",
+        "x": 2155.56982421875,
+        "y": 602
+      },
+      {
+        "name": "reporte_financiero",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 1856
+      },
+      {
+        "name": "catalogo_indicador",
+        "schemaName": "public",
+        "x": 1675.2138291079466,
+        "y": 550.2713142804149
+      },
+      {
+        "name": "indicador_financiero",
+        "schemaName": "public",
+        "x": 3337.55224609375,
+        "y": 12
+      },
+      {
+        "name": "valor_indicador",
+        "schemaName": "public",
+        "x": 3876.0107421875,
+        "y": 12
+      },
+      {
+        "name": "proceso_carga",
+        "schemaName": "public",
+        "x": 3337.55224609375,
+        "y": 680
+      },
+      {
+        "name": "archivo_procesado",
+        "schemaName": "public",
+        "x": 3337.55224609375,
+        "y": 378
+      },
+      {
+        "name": "simulacion_financiera",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 950
+      },
+      {
+        "name": "recomendacion_ia",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 1554
+      },
+      {
+        "name": "bitacora_sistema",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 1252
+      },
+      {
+        "name": "configuracion_sistema",
+        "schemaName": "public",
+        "x": 605.93310546875,
+        "y": 12
+      },
+      {
+        "name": "tarea_programada",
+        "schemaName": "public",
+        "x": 907.26904296875,
+        "y": 12
+      },
+      {
+        "name": "ejecucion_tarea",
+        "schemaName": "public",
+        "x": 1355.00830078125,
+        "y": 12
+      },
+      {
+        "name": "auth_group",
+        "schemaName": "public",
+        "x": 1645.826171875,
+        "y": 886
+      },
+      {
+        "name": "auth_permission",
+        "schemaName": "public",
+        "x": 2155.56982421875,
+        "y": 1022
+      },
+      {
+        "name": "auth_group_permissions",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 2828
+      },
+      {
+        "name": "usuario_groups",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 2479
+      },
+      {
+        "name": "usuario_user_permissions",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 2654
+      },
+      {
+        "name": "django_content_type",
+        "schemaName": "public",
+        "x": 1645.826171875,
+        "y": 1028
+      },
+      {
+        "name": "django_admin_log",
+        "schemaName": "public",
+        "x": 2763.2880859375,
+        "y": 3002
+      },
+      {
+        "name": "django_migrations",
+        "schemaName": "public",
+        "x": 330.1083984375,
+        "y": 12
+      },
+      {
+        "name": "django_session",
+        "schemaName": "public",
+        "x": 12,
+        "y": 12
+      }
+    ],
     "tableGroupCollapseStates": [],
     "stickyNoteLayouts": [],
     "referencePaths": []

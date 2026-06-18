@@ -10,6 +10,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import Home from "./pages/Dashboard/Home";
 import CompleteProfile from "./pages/Profile/CompleteProfile";
 import { CompanyDetail } from "./pages/CompanyDetail";
+import ChatPage from "./pages/Chat/ChatPage";
 
 // Admin
 import { AdminDashboard, UsersManagement, CompaniesManagement, SectorsManagement, ProcessAudit } from "./pages/Admin";
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/company/:id" element={<CompanyDetail />} />
+              <Route path="/chat" element={<ChatPage />} />
             </Route>
 
             {/* Admin */}

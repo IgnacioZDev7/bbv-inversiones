@@ -97,3 +97,49 @@ export interface DashboardKPIs {
   total_reportes: number;
   total_usuarios: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  conversation_id?: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  conversation_id: string;
+}
+
+export interface BiometricVerifyResponse {
+  verified: boolean;
+  similarity: number;
+  message: string;
+}
+
+export interface LivenessCheckResponse {
+  alive: boolean;
+  confidence: number;
+  details: LivenessCheckDetail[];
+}
+
+export interface LivenessCheckDetail {
+  check: string;
+  passed: boolean;
+  confidence?: number;
+  reason?: string;
+  yaw?: number;
+  pitch?: number;
+}

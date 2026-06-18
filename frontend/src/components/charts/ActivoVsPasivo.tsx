@@ -37,7 +37,7 @@ export default function ActivoVsPasivo({ data, companyName }: ActivoVsPasivoProp
   if (chartData.length === 0) {
     return (
       <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Composición Financiera
           </h3>
@@ -49,7 +49,7 @@ export default function ActivoVsPasivo({ data, companyName }: ActivoVsPasivoProp
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Composición Financiera
