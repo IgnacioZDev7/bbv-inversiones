@@ -1,9 +1,10 @@
 import type { ReporteFinanciero } from '../types/api';
 
-export type FinancialStatus = 'healthy' | 'watch' | 'risk';
+export type FinancialStatus = 'excelente' | 'saludable' | 'observacion' | 'riesgo';
 
 export interface FinancialPoint {
   label: string;
+  date: string;
   gestion: number;
   trimestre: number | null;
   activo: number;
@@ -28,6 +29,7 @@ export interface FinancialSnapshot {
   liquidez: number;
   endeudamiento: number;
   capitalTrabajo: number;
+  solvencia: number;
   variacionPatrimonio: number;
   score: number;
   status: FinancialStatus;
@@ -76,8 +78,10 @@ export const toFinancialPoint = (report: ReporteFinanciero): FinancialPoint => {
   const activoCorriente = getFinancialValue(report, 'total_activo_corriente');
   const pasivoCorriente = getFinancialValue(report, 'total_pasivo_corriente');
 
+  const month = report.trimestre ? ((report.trimestre - 1) * 3 + 1).toString().padStart(2, '0') : '01';
   return {
     label: report.trimestre ? `${report.gestion} T${report.trimestre}` : `${report.gestion}`,
+    date: `${report.gestion}-${month}-01`,
     gestion: report.gestion,
     trimestre: report.trimestre,
     activo,
@@ -89,6 +93,35 @@ export const toFinancialPoint = (report: ReporteFinanciero): FinancialPoint => {
     endeudamiento: activo > 0 ? pasivo / activo : 0,
     capitalTrabajo: activoCorriente - pasivoCorriente,
   };
+};
+
+export function calculateFinancialHealthScore(params: {
+  liquidez: number;
+  endeudamiento: number;
+  crecimientoPatrimonial: number;
+  solvencia?: number;
+}): number {
+  const liqScore = Math.min(35, Math.max(0, (params.liquidez - 0.8) / 0.7 * 35));
+  const endScore = Math.min(35, Math.max(0, (0.9 - params.endeudamiento) / 0.5 * 35));
+  const trendScore = Math.min(20, Math.max(0, (params.crecimientoPatrimonial + 0.15) / 0.25 * 20));
+  const solvScore = params.solvencia != null
+    ? Math.min(10, Math.max(0, (params.solvencia - 1.0) / 1.0 * 10))
+    : 0;
+  return Math.round(Math.min(100, Math.max(0, liqScore + endScore + trendScore + solvScore)));
+}
+
+export function classifyHealthScore(score: number): FinancialStatus {
+  if (score >= 80) return 'excelente';
+  if (score >= 60) return 'saludable';
+  if (score >= 40) return 'observacion';
+  return 'riesgo';
+}
+
+export const healthLabelMap: Record<FinancialStatus, { status: string; risk: string }> = {
+  excelente: { status: 'Excelente', risk: 'Riesgo muy bajo' },
+  saludable: { status: 'Saludable', risk: 'Riesgo bajo' },
+  observacion: { status: 'En observación', risk: 'Riesgo medio' },
+  riesgo: { status: 'En riesgo', risk: 'Riesgo alto' },
 };
 
 export const buildFinancialSnapshot = (reports: ReporteFinanciero[] = []): FinancialSnapshot => {
@@ -104,17 +137,16 @@ export const buildFinancialSnapshot = (reports: ReporteFinanciero[] = []): Finan
       ? (latestPoint.patrimonio - previousPatrimonio) / previousPatrimonio
       : 0;
 
-  const liquidezScore = Math.min(35, Math.max(0, latestPoint ? latestPoint.liquidez / 1.5 : 0) * 35);
-  const debtScore = latestPoint ? Math.max(0, 35 - latestPoint.endeudamiento * 35) : 0;
-  const trendScore = Math.min(30, Math.max(0, (variacionPatrimonio + 0.15) / 0.3) * 30);
-  const score = Math.round(Math.min(100, liquidezScore + debtScore + trendScore));
+  const solvencia = latestPoint && latestPoint.pasivo > 0 ? latestPoint.activo / latestPoint.pasivo : 0;
 
-  const status: FinancialStatus =
-    latestPoint && (latestPoint.liquidez < 1 || latestPoint.endeudamiento > 0.8 || variacionPatrimonio < -0.1)
-      ? 'risk'
-      : latestPoint && latestPoint.liquidez >= 1.2 && latestPoint.endeudamiento <= 0.6 && variacionPatrimonio >= 0
-        ? 'healthy'
-        : 'watch';
+  const score = calculateFinancialHealthScore({
+    liquidez: latestPoint?.liquidez ?? 0,
+    endeudamiento: latestPoint?.endeudamiento ?? 0,
+    crecimientoPatrimonial: variacionPatrimonio,
+    solvencia,
+  });
+  const status = classifyHealthScore(score);
+  const labels = healthLabelMap[status];
 
   return {
     latest,
@@ -128,10 +160,11 @@ export const buildFinancialSnapshot = (reports: ReporteFinanciero[] = []): Finan
     liquidez: latestPoint?.liquidez ?? 0,
     endeudamiento: latestPoint?.endeudamiento ?? 0,
     capitalTrabajo: latestPoint?.capitalTrabajo ?? 0,
+    solvencia,
     variacionPatrimonio,
     score,
     status,
-    statusLabel: status === 'healthy' ? 'Saludable' : status === 'risk' ? 'Riesgo alto' : 'En observacion',
-    riskLabel: status === 'healthy' ? 'Riesgo bajo' : status === 'risk' ? 'Riesgo alto' : 'Riesgo medio',
+    statusLabel: labels.status,
+    riskLabel: labels.risk,
   };
 };

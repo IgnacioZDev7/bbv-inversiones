@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useApi } from '../../hooks/useApi';
-import { getAllEmpresas, getAllReportes } from '../../services/apiServices';
-import type { Empresa, ReporteFinanciero } from '../../types/api';
+import { getDashboardData, getAllEmpresas } from '../../services/apiServices';
+import type { DashboardData } from '../../services/apiServices';
+import type { Empresa } from '../../types/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartTooltip,
 } from 'recharts';
@@ -24,22 +25,25 @@ export default function InvestorDashboard() {
   const navigate = useNavigate();
   const [watchlistIds, setWatchlistIds] = useState<number[]>(readWatchlist);
 
+  const { data: dashboardData, isLoading: dashLoading } = useApi<DashboardData>(getDashboardData, []);
   const { data: empresas, isLoading: empLoading } = useApi<Empresa[]>(() => getAllEmpresas(), []);
-  const { data: reportes, isLoading: repLoading } = useApi<ReporteFinanciero[]>(() => getAllReportes({ page_size: 100 }), []);
 
-  const processedReports = useMemo(() => (reportes ?? []).filter((r) => r.estado_procesamiento === 'PROCESADO'), [reportes]);
+  const processedCount = dashboardData?.reportes_procesados ?? 0;
 
-  // Watchlist companies
+  const reportEmpresaNames = useMemo(
+    () => new Set((dashboardData?.ultimos_reportes ?? []).map((r) => r.empresa_nombre)),
+    [dashboardData],
+  );
+
   const watchlistCompanies = useMemo(
     () => (empresas ?? []).filter((c) => watchlistIds.includes(c.id_empresa)),
     [empresas, watchlistIds],
   );
 
-  // Empresas con reportes procesados = "recomendadas"
-  const companiesWithReports = useMemo(() => {
-    const ids = new Set(processedReports.map((r) => r.empresa));
-    return (empresas ?? []).filter((c) => ids.has(c.id_empresa));
-  }, [empresas, processedReports]);
+  const companiesWithReports = useMemo(
+    () => (empresas ?? []).filter((c) => reportEmpresaNames.has(c.nombre)),
+    [empresas, reportEmpresaNames],
+  );
 
   const removeFromWatchlist = (id: number) => {
     const next = watchlistIds.filter((w) => w !== id);
@@ -47,25 +51,20 @@ export default function InvestorDashboard() {
     localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(next));
   };
 
-  // Últimos reportes globales
   const latestReports = useMemo(
-    () => [...processedReports].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-    ).slice(0, 5),
-    [processedReports],
+    () => (dashboardData?.ultimos_reportes ?? []).slice(0, 5),
+    [dashboardData],
   );
 
-  // Resumen de mercado: empresas con reportes por sector
-  const marketData = useMemo(() => {
-    const map: Record<string, number> = {};
-    companiesWithReports.forEach((c) => {
-      const sector = c.sector_nombre || 'Otros';
-      map[sector] = (map[sector] || 0) + 1;
-    });
-    return Object.entries(map).map(([sector, count]) => ({ sector, count }));
-  }, [companiesWithReports]);
+  const marketData = useMemo(
+    () => (dashboardData?.empresas_por_sector ?? []).map((item) => ({
+      sector: item.sector_nombre,
+      count: item.count,
+    })),
+    [dashboardData],
+  );
 
-  const loading = empLoading || repLoading;
+  const loading = dashLoading || empLoading;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -95,7 +94,7 @@ export default function InvestorDashboard() {
           </div>
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reportes disponibles</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{processedReports.length}</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{processedCount}</p>
           </div>
         </div>
       )}
@@ -189,8 +188,8 @@ export default function InvestorDashboard() {
               {latestReports.length === 0 ? (
                 <div className="px-5 py-8 text-center text-xs text-gray-400 italic">No hay reportes disponibles.</div>
               ) : (
-                latestReports.map((r) => (
-                  <div key={r.id_reporte} className="flex items-center justify-between px-5 py-3">
+                latestReports.map((r, idx) => (
+                  <div key={idx} className="flex items-center justify-between px-5 py-3">
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{r.empresa_nombre}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{r.gestion}{r.trimestre ? ` T${r.trimestre}` : ''}</p>

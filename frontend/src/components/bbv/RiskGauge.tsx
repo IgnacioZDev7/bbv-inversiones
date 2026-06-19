@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
+import { calculateFinancialHealthScore, classifyHealthScore, healthLabelMap } from '../../utils/financialMetrics';
 
 interface Metric {
   id: number;
   reporte: number;
   gestion: number;
   trimestre: number;
+  activos: string | null;
+  pasivos: string | null;
   patrimonio: string | null;
   liquidez_corriente: string | null;
   endeudamiento: string | null;
@@ -21,7 +24,6 @@ export default function RiskGauge({ metrics }: RiskGaugeProps) {
 
   if (!metrics || metrics.length === 0) return null;
 
-  // Replicar exactamente la lógica de FinancialAnalysis.tsx para asegurar coherencia
   const sortedMetrics = [...metrics].sort((a, b) => {
     if (a.gestion !== b.gestion) return b.gestion - a.gestion;
     return b.trimestre - a.trimestre;
@@ -35,40 +37,32 @@ export default function RiskGauge({ metrics }: RiskGaugeProps) {
   const nPatrimonioAct = Number(latest.patrimonio || 0);
   const nPatrimonioPrev = Number(previous?.patrimonio || 0);
   const varPatrimonio = (nPatrimonioPrev !== 0) ? ((nPatrimonioAct - nPatrimonioPrev) / nPatrimonioPrev) : 0;
+  const nActivos = Number(latest.activos || 0);
+  const nPasivos = Number(latest.pasivos || 0);
+  const solvencia = nPasivos > 0 ? nActivos / nPasivos : 0;
 
-  let isSaludable = false;
-  if (nLiquidez >= 1.2 && nEndeudamiento <= 0.6 && varPatrimonio >= 0) {
-    isSaludable = true;
-  }
+  const healthScore = calculateFinancialHealthScore({
+    liquidez: nLiquidez,
+    endeudamiento: nEndeudamiento,
+    crecimientoPatrimonial: varPatrimonio,
+    solvencia,
+  });
+  const status = classifyHealthScore(healthScore);
+  const labels = healthLabelMap[status];
 
-  let isRiesgoso = false;
-  if (nLiquidez < 1.0 || nEndeudamiento > 0.8 || varPatrimonio < -0.10) {
-    isRiesgoso = true;
-  }
+  // Score representa el nivel de riesgo (inverso del health score)
+  const riskScore = 100 - healthScore;
+  let color = '#10b981';
+  if (status === 'observacion') color = '#f59e0b';
+  else if (status === 'riesgo') color = '#ef4444';
 
-  // Asignar score representando el Nivel de Riesgo (0-100)
-  let score = 50; // Moderado
-  let color = '#f59e0b'; // Amarillo
-  let statusText = 'Riesgo Medio';
-
-  if (isSaludable && !isRiesgoso) {
-    score = 15; // Bajo riesgo
-    color = '#10b981'; // Verde
-    statusText = 'Riesgo Bajo';
-  } else if (isRiesgoso) {
-    score = 85; // Alto riesgo
-    color = '#ef4444'; // Rojo
-    statusText = 'Riesgo Alto';
-  }
-
-  // Animación suave de entrada
   useEffect(() => {
     setAnimateScore(0);
     const timer = setTimeout(() => {
-      setAnimateScore(score);
+      setAnimateScore(riskScore);
     }, 150);
     return () => clearTimeout(timer);
-  }, [score]);
+  }, [riskScore]);
 
   const options: ApexOptions = {
     chart: {
@@ -164,7 +158,7 @@ export default function RiskGauge({ metrics }: RiskGaugeProps) {
           style={{ backgroundColor: `${color}15`, color: color }}
         >
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></span>
-          {statusText}
+          {labels.risk}
         </span>
       </div>
     </div>

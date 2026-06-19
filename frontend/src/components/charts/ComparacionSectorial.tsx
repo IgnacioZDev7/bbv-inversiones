@@ -1,20 +1,15 @@
 import { useMemo, useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
-} from 'recharts';
 import type { Empresa } from '../../types/api';
 import { getReportesByEmpresa } from '../../services/apiServices';
 import SkeletonLoader from '../common/SkeletonLoader';
 import ErrorState from '../common/ErrorState';
 import EmptyState from '../common/EmptyState';
 import { formatPercent } from '../../utils/financialMetrics';
-import CustomTooltip from './CustomTooltip';
+import Bar3DChart from '../visuals/Bar3DChart';
 
 interface CompanyMetrics {
   endeudamiento: number;
   liquidez: number;
-  roa: number | null;
-  roe: number | null;
 }
 
 interface ComparacionSectorialProps {
@@ -23,8 +18,6 @@ interface ComparacionSectorialProps {
   currentSector?: number;
   currentEndeudamiento: number;
   currentLiquidez: number;
-  currentRoa: number | null;
-  currentRoe: number | null;
 }
 
 interface MetricDef {
@@ -38,8 +31,6 @@ interface MetricDef {
 const METRICS: MetricDef[] = [
   { key: 'endeudamiento', title: 'Endeudamiento', color: '#d97706', lowerIsBetter: true, formatter: formatPercent },
   { key: 'liquidez', title: 'Liquidez', color: '#059669', lowerIsBetter: false, formatter: (v) => v.toFixed(2) },
-  { key: 'roa', title: 'ROA', color: '#2563eb', lowerIsBetter: false, formatter: formatPercent },
-  { key: 'roe', title: 'ROE', color: '#8b5cf6', lowerIsBetter: false, formatter: formatPercent },
 ];
 
 export default function ComparacionSectorial({
@@ -48,8 +39,6 @@ export default function ComparacionSectorial({
   currentSector,
   currentEndeudamiento,
   currentLiquidez,
-  currentRoa,
-  currentRoe,
 }: ComparacionSectorialProps) {
   const [companyReports, setCompanyReports] = useState<Record<number, CompanyMetrics>>({});
   const [loading, setLoading] = useState(true);
@@ -111,8 +100,6 @@ export default function ComparacionSectorial({
               results[company.id_empresa] = {
                 endeudamiento: activo > 0 ? pasivo / activo : 0,
                 liquidez: pc > 0 ? ac / pc : 0,
-                roa: d.roa != null ? Number(d.roa) : null,
-                roe: d.roe != null ? Number(d.roe) : null,
               };
               console.log(`[ComparacionSectorial] ${company.nombre}:`, results[company.id_empresa]);
             } else {
@@ -133,8 +120,6 @@ export default function ComparacionSectorial({
   const currentValues: Record<string, number | null> = {
     endeudamiento: currentEndeudamiento,
     liquidez: currentLiquidez,
-    roa: currentRoa,
-    roe: currentRoe,
   };
 
   if (sectorData.length === 0) {
@@ -240,60 +225,17 @@ function SectorBarChart({
   }
 
   const fullData = currentValue != null
-    ? [...chartData, { name: 'Tu empresa', value: currentValue }]
+    ? [...chartData, { name: 'Tu empresa', value: currentValue, highlight: true, badge: 'Tu empresa' }]
     : chartData;
 
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400">{title}</h4>
-        {currentValue != null && (
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">
-            Actual: {formatter(currentValue)}
-          </span>
-        )}
-      </div>
-      <div className="h-[180px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={fullData}
-            margin={{ top: 4, right: 4, left: -12, bottom: 0 }}
-            layout="vertical"
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="rgba(148, 163, 184, 0.15)"
-              horizontal={false}
-            />
-            <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              tick={{ fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              width={72}
-            />
-            <Tooltip
-              content={<CustomTooltip formatter={(v) => formatter(v)} />}
-              cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
-            />
-            <Bar
-              dataKey="value"
-              name={title}
-              fill={barColor}
-              radius={[0, 4, 4, 0]}
-              maxBarSize={18}
-              label={{
-                position: 'right' as const,
-                fontSize: 10,
-                fill: '#6b7280',
-                formatter: (v: any) => formatter(Number(v)),
-              }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <Bar3DChart
+      title={title}
+      subtitle="Explorador 3D interactivo"
+      data={fullData}
+      formatter={formatter}
+      defaultColor={barColor}
+      height={280}
+    />
   );
 }

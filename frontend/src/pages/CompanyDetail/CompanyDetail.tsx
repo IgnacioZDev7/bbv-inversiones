@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
 import { getEmpresaById, getReportesByEmpresa, getAllEmpresas } from '../../services/apiServices';
 import type { Empresa, ReporteFinanciero } from '../../types/api';
-import { toFinancialPoint, formatMoneyCompact, formatPercent } from '../../utils/financialMetrics';
+import { toFinancialPoint, formatMoneyCompact, formatPercent, calculateFinancialHealthScore } from '../../utils/financialMetrics';
 import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
@@ -13,7 +13,6 @@ import ComparacionSectorial from '../../components/charts/ComparacionSectorial';
 import HistoricalFinancialChart from '../../components/charts/HistoricalFinancialChart';
 import ActivoVsPasivo from '../../components/charts/ActivoVsPasivo';
 import FinancialRatiosChart from '../../components/charts/FinancialRatiosChart';
-import type { PaginatedResponse } from '../../types/api';
 
 interface Metric {
   activos: number;
@@ -21,8 +20,6 @@ interface Metric {
   patrimonio: number;
   liquidez_corriente: number;
   endeudamiento: number;
-  roa: number | null;
-  roe: number | null;
 }
 
 const mapReporteToMetric = (r: ReporteFinanciero): Metric => {
@@ -37,8 +34,6 @@ const mapReporteToMetric = (r: ReporteFinanciero): Metric => {
       ? Number(d.total_activo_corriente) / Number(d.total_pasivo_corriente)
       : 0,
     endeudamiento: activo > 0 ? pasivo / activo : 0,
-    roa: d.roa != null ? Number(d.roa) : null,
-    roe: d.roe != null ? Number(d.roe) : null,
   };
 };
 
@@ -77,7 +72,7 @@ export default function CompanyDetail() {
       .then(([emp, reportData, compData]) => {
         setEmpresa(emp);
         setReports(reportData.results);
-        setCompanies(Array.isArray(compData) ? compData : compData.results);
+        setCompanies(compData);
       })
       .catch(() => setError('Error al conectar con la terminal financiera.'))
       .finally(() => setLoading(false));
@@ -203,6 +198,7 @@ export default function CompanyDetail() {
               liquidez={current.liquidez_corriente}
               endeudamiento={current.endeudamiento}
               trendPatrimonio={trendPatrimonio}
+              solvencia={current.pasivos > 0 ? current.activos / current.pasivos : 0}
               companyId={empresaId}
             />
 
@@ -219,11 +215,12 @@ export default function CompanyDetail() {
                 <FinancialRatiosChart data={points} />
               </ErrorBoundary>
               <FinancialHealth3D
-                score={
-                  current.liquidez_corriente >= 1.2 && current.endeudamiento <= 0.6
-                    ? 85 : current.liquidez_corriente >= 1.0 || current.endeudamiento <= 0.8
-                      ? 55 : 25
-                }
+                score={calculateFinancialHealthScore({
+                  liquidez: current.liquidez_corriente,
+                  endeudamiento: current.endeudamiento,
+                  crecimientoPatrimonial: trendPatrimonio,
+                  solvencia: current.pasivos > 0 ? current.activos / current.pasivos : 0,
+                })}
                 liquidez={current.liquidez_corriente}
                 endeudamiento={current.endeudamiento}
               />
@@ -237,8 +234,6 @@ export default function CompanyDetail() {
                 currentSector={empresa?.sector}
                 currentEndeudamiento={current.endeudamiento}
                 currentLiquidez={current.liquidez_corriente}
-                currentRoa={current.roa}
-                currentRoe={current.roe}
               />
             </ErrorBoundary>
           </div>

@@ -1,75 +1,88 @@
 import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { calculateFinancialHealthScore, classifyHealthScore } from '../../utils/financialMetrics';
 
-type HealthState = 'healthy' | 'watch' | 'risk';
+type HealthState = 'excelente' | 'saludable' | 'observacion' | 'riesgo';
 
 interface FinancialHealthBannerProps {
   liquidez: number;
   endeudamiento: number;
   trendPatrimonio: number;
+  solvencia?: number;
   companyId?: number;
 }
 
 const AUDIO_FILES: Record<HealthState, string> = {
-  healthy: '/audio/saludable.mp3',
-  watch: '/audio/observacion.mp3',
-  risk: '/audio/riesgo.mp3',
+  excelente: '/audio/saludable.mp3',
+  saludable: '/audio/saludable.mp3',
+  observacion: '/audio/observacion.mp3',
+  riesgo: '/audio/riesgo.mp3',
 };
 
 const TONE_FREQ: Record<HealthState, number> = {
-  healthy: 523,
-  watch: 392,
-  risk: 196,
+  excelente: 587,
+  saludable: 523,
+  observacion: 392,
+  riesgo: 196,
 };
 
 const TONE_DUR: Record<HealthState, number> = {
-  healthy: 0.8,
-  watch: 0.6,
-  risk: 1.0,
+  excelente: 0.8,
+  saludable: 0.8,
+  observacion: 0.6,
+  riesgo: 1.0,
 };
 
-function computeHealth(liquidez: number, endeudamiento: number, trend: number) {
-  const liqScore = Math.min(35, Math.max(0, (liquidez - 0.8) / 0.7 * 35));
-  const debtScore = Math.min(35, Math.max(0, (0.9 - endeudamiento) / 0.5 * 35));
-  const trendScore = Math.min(30, Math.max(0, (trend + 0.15) / 0.25 * 30));
-  const score = Math.round(Math.min(100, Math.max(0, liqScore + debtScore + trendScore)));
-
-  let state: HealthState;
+function computeHealth(liquidez: number, endeudamiento: number, trend: number, solvencia?: number) {
+  const score = calculateFinancialHealthScore({
+    liquidez,
+    endeudamiento,
+    crecimientoPatrimonial: trend,
+    solvencia,
+  });
+  const state = classifyHealthScore(score);
   let label: string;
   let summary: string;
 
-  if (score >= 70) {
-    state = 'healthy';
+  if (state === 'excelente') {
+    label = 'EXCELENTE';
+    summary = 'La empresa presenta una posición financiera excepcional con todos los indicadores en niveles óptimos.';
+  } else if (state === 'saludable') {
     label = 'SALUDABLE';
     summary = 'La empresa mantiene una posición financiera sólida con indicadores estables.';
-  } else if (score >= 40) {
-    state = 'watch';
+  } else if (state === 'observacion') {
     label = 'EN OBSERVACIÓN';
     summary = 'Algunos indicadores requieren monitoreo constante en los próximos periodos.';
   } else {
-    state = 'risk';
     label = 'EN RIESGO';
     summary = 'Múltiples indicadores financieros muestran señales de alerta significativas.';
   }
 
-  return { score, state, label, summary, liqScore, debtScore, trendScore };
+  return { score, state, label, summary };
 }
 
 const config: Record<HealthState, { bar: string; text: string; bg: string; border: string; icon: string }> = {
-  healthy: {
+  excelente: {
     bar: 'bg-emerald-500',
     text: 'text-emerald-700 dark:text-emerald-300',
     bg: 'bg-emerald-50 dark:bg-emerald-500/5',
     border: 'border-emerald-200 dark:border-emerald-500/20',
     icon: 'text-emerald-500',
   },
-  watch: {
+  saludable: {
+    bar: 'bg-emerald-400',
+    text: 'text-emerald-600 dark:text-emerald-300',
+    bg: 'bg-emerald-50 dark:bg-emerald-500/5',
+    border: 'border-emerald-200 dark:border-emerald-500/20',
+    icon: 'text-emerald-500',
+  },
+  observacion: {
     bar: 'bg-amber-500',
     text: 'text-amber-700 dark:text-amber-300',
     bg: 'bg-amber-50 dark:bg-amber-500/5',
     border: 'border-amber-200 dark:border-amber-500/20',
     icon: 'text-amber-500',
   },
-  risk: {
+  riesgo: {
     bar: 'bg-red-500',
     text: 'text-red-700 dark:text-red-300',
     bg: 'bg-red-50 dark:bg-red-500/5',
@@ -104,19 +117,20 @@ function AlertIcon({ className }: { className?: string }) {
 }
 
 const stateIcons: Record<HealthState, typeof ShieldIcon> = {
-  healthy: ShieldIcon,
-  watch: EyeIcon,
-  risk: AlertIcon,
+  excelente: ShieldIcon,
+  saludable: ShieldIcon,
+  observacion: EyeIcon,
+  riesgo: AlertIcon,
 };
 
-export default function FinancialHealthBanner({ liquidez, endeudamiento, trendPatrimonio, companyId }: FinancialHealthBannerProps) {
+export default function FinancialHealthBanner({ liquidez, endeudamiento, trendPatrimonio, solvencia, companyId }: FinancialHealthBannerProps) {
   const playedRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const { score, state, label, summary } = useMemo(
-    () => computeHealth(liquidez, endeudamiento, trendPatrimonio),
-    [liquidez, endeudamiento, trendPatrimonio],
+    () => computeHealth(liquidez, endeudamiento, trendPatrimonio, solvencia),
+    [liquidez, endeudamiento, trendPatrimonio, solvencia],
   );
 
   const styles = config[state];

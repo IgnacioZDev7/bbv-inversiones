@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useApi } from '../../hooks/useApi';
-import { getAllEmpresas, getAllReportes } from '../../services/apiServices';
-import type { Empresa, ReporteFinanciero } from '../../types/api';
+import { getDashboardData } from '../../services/apiServices';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from 'recharts';
@@ -17,14 +16,14 @@ const IconDocument = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 );
-const IconChart = () => (
+const IconUsers = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
   </svg>
 );
-const IconClock = () => (
+const IconError = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
@@ -57,20 +56,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, isLoadin
 export default function AnalystDashboard() {
   const navigate = useNavigate();
 
-  const { data: empresas, isLoading: empLoading } = useApi<Empresa[]>(() => getAllEmpresas(), []);
-  const { data: reportes, isLoading: repLoading } = useApi<ReporteFinanciero[]>(() => getAllReportes({ page_size: 100 }), []);
+  const { data: dashboardData, isLoading } = useApi(getDashboardData, []);
 
-  const processedReports = useMemo(() => (reportes ?? []).filter((r) => r.estado_procesamiento === 'PROCESADO'), [reportes]);
-  const erroredReports = useMemo(() => (reportes ?? []).filter((r) => r.estado_procesamiento === 'ERROR'), [reportes]);
-  const lastUpdate = useMemo(() => {
-    if (!reportes || reportes.length === 0) return '—';
-    const dates = reportes.map((r) => r.updated_at).filter(Boolean) as string[];
-    if (dates.length === 0) return '—';
-    const max = dates.sort().reverse()[0];
-    return new Date(max).toLocaleDateString('es-BO', { year: 'numeric', month: 'short', day: 'numeric' });
-  }, [reportes]);
+  const processedCount = dashboardData?.reportes_procesados ?? 0;
+  const erroredCount = dashboardData?.reportes_con_error ?? 0;
 
-  // Reportes procesados por mes
+  const processedReports = useMemo(
+    () => (dashboardData?.ultimos_reportes ?? []).filter((r) => r.estado_procesamiento === 'PROCESADO'),
+    [dashboardData],
+  );
+
   const reportesPorMes = useMemo(() => {
     const months: Record<string, number> = {};
     const now = new Date();
@@ -80,7 +75,7 @@ export default function AnalystDashboard() {
       months[key] = 0;
     }
     processedReports.forEach((r) => {
-      const date = r.created_at ? new Date(r.created_at) : null;
+      const date = r.updated_at ? new Date(r.updated_at) : null;
       if (date) {
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (months[key] !== undefined) months[key]++;
@@ -88,8 +83,6 @@ export default function AnalystDashboard() {
     });
     return Object.entries(months).map(([label, cantidad]) => ({ label, cantidad }));
   }, [processedReports]);
-
-  const loading = empLoading || repLoading;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -103,10 +96,10 @@ export default function AnalystDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Empresas disponibles" value={empresas?.length ?? 0} icon={<IconBuilding />} color="bg-blue-600" isLoading={loading} />
-        <StatCard title="Reportes procesados" value={processedReports.length} icon={<IconDocument />} color="bg-emerald-600" isLoading={loading} />
-        <StatCard title="Indicadores calculados" value={`${processedReports.length > 0 ? Math.min(processedReports.length * 5, 50) : 0}`} icon={<IconChart />} color="bg-violet-600" isLoading={loading} />
-        <StatCard title="Última actualización" value={lastUpdate} icon={<IconClock />} color="bg-amber-500" isLoading={loading} />
+        <StatCard title="Empresas disponibles" value={dashboardData?.total_empresas ?? 0} icon={<IconBuilding />} color="bg-blue-600" isLoading={isLoading} />
+        <StatCard title="Reportes procesados" value={processedCount} icon={<IconDocument />} color="bg-emerald-600" isLoading={isLoading} />
+        <StatCard title="Reportes con error" value={erroredCount} icon={<IconError />} color="bg-red-600" isLoading={isLoading} />
+        <StatCard title="Usuarios registrados" value={dashboardData?.total_usuarios ?? 0} icon={<IconUsers />} color="bg-amber-500" isLoading={isLoading} />
       </div>
 
       {/* Quick actions */}
@@ -159,11 +152,11 @@ export default function AnalystDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-500/10">
           <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Reportes OK</p>
-          <p className="mt-1 text-3xl font-black text-emerald-800 dark:text-emerald-200">{processedReports.length}</p>
+          <p className="mt-1 text-3xl font-black text-emerald-800 dark:text-emerald-200">{processedCount}</p>
         </div>
         <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-500/10">
           <p className="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-300">Reportes con error</p>
-          <p className="mt-1 text-3xl font-black text-red-800 dark:text-red-200">{erroredReports.length}</p>
+          <p className="mt-1 text-3xl font-black text-red-800 dark:text-red-200">{erroredCount}</p>
         </div>
       </div>
     </div>

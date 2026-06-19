@@ -103,29 +103,30 @@ class SimulacionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def execute(self, request):
         """
-        Ejecuta una simulación Monte Carlo simplificada.
+        Ejecuta una simulación basada en rendimiento histórico y volatilidad.
         """
         empresa_id = request.data.get('empresa_id')
         monto = request.data.get('monto')
         anios = request.data.get('horizonte', 1)
+        modo = request.data.get('modo', 'basico')
 
         if not empresa_id or not monto:
             return Response({"error": "Debe proporcionar empresa_id y monto"}, status=400)
 
         service = SimulationService()
         try:
-            resultado = service.calculate_simulation(empresa_id, monto, anios)
+            resultado = service.calculate_simulation(empresa_id, monto, anios, modo)
             
-            # Persistir
-            sim = SimulacionFinanciera.objects.create(
+            score_map = {"Alta": 90, "Media": 65, "Baja": 40}
+            SimulacionFinanciera.objects.create(
                 usuario=request.user,
                 nombre_simulacion=f"Simulación {empresa_id} - {anios} años",
-                parametros={"monto": monto, "anios": anios, "empresa": empresa_id},
+                parametros={"monto": monto, "anios": anios, "empresa": empresa_id, "modo": modo},
                 resultado=resultado,
-                score_confianza=75.0 # Placeholder
+                score_confianza=score_map.get(resultado.get("confidence_score"), 50)
             )
             
-            return Response(SimulacionSerializer(sim).data, status=201)
+            return Response(resultado, status=201)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
 

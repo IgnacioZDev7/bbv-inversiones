@@ -18,7 +18,7 @@ interface FinancialRatiosChartProps {
 
 /**
  * High-density financial ratios chart.
- * Combines multiple metrics (Liquidity, Debt, ROA, ROE) in a single interactive view.
+ * Combines Liquidity and Debt ratios in a single interactive view.
  */
 export default function FinancialRatiosChart({ data }: FinancialRatiosChartProps) {
   const chartData = useMemo(() => {
@@ -26,9 +26,6 @@ export default function FinancialRatiosChart({ data }: FinancialRatiosChartProps
       label: d.label,
       liquidez: d.liquidez,
       endeudamiento: d.endeudamiento,
-      // Placeholder for future metrics (currently Balance only)
-      roa: 0,
-      roe: 0
     }));
   }, [data]);
 

@@ -200,21 +200,21 @@ export default function CompleteProfile() {
             </div>
             <form onSubmit={handleProfileSave} className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               {([
-                { id: 'nombre', label: 'Nombre' },
-                { id: 'apellido_paterno', label: 'Apellido Paterno' },
-                { id: 'apellido_materno', label: 'Apellido Materno' },
-                { id: 'email', label: 'Email', disabled: true },
-                { id: 'ci', label: 'Cédula de Identidad' },
-                { id: 'celular', label: 'Teléfono / Celular' },
-                { id: 'fecha_nacimiento', label: 'Fecha Nacimiento', type: 'date' },
-                { id: 'direccion', label: 'Dirección', placeholder: 'No disponible en backend' },
-              ] as const).map((f) => (
+                { id: 'nombre', label: 'Nombre' } as const,
+                { id: 'apellido_paterno', label: 'Apellido Paterno' } as const,
+                { id: 'apellido_materno', label: 'Apellido Materno' } as const,
+                { id: 'email', label: 'Email', disabled: true } as const,
+                { id: 'ci', label: 'Cédula de Identidad' } as const,
+                { id: 'celular', label: 'Teléfono / Celular' } as const,
+                { id: 'fecha_nacimiento', label: 'Fecha Nacimiento', type: 'date' } as const,
+                { id: 'direccion', label: 'Dirección', placeholder: 'No disponible en backend' } as const,
+              ]).map((f) => (
                 <div key={f.id} className={f.id === 'direccion' ? 'md:col-span-2' : ''}>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">{f.label}</label>
                   <input
-                    type={f.type || 'text'}
-                    disabled={f.disabled}
-                    placeholder={f.placeholder}
+                    type={'type' in f ? f.type : 'text'}
+                    disabled={'disabled' in f ? f.disabled : undefined}
+                    placeholder={'placeholder' in f ? f.placeholder : ''}
                     value={(formData as any)[f.id] || ''}
                     onChange={(e) => setFormData({ ...formData, [f.id]: e.target.value })}
                     className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-gray-700 dark:text-white focus:ring-4 focus:ring-brand-500/10 outline-none transition-all disabled:opacity-50 placeholder:text-gray-300 dark:placeholder:text-gray-600"

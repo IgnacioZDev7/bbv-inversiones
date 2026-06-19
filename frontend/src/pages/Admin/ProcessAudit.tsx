@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
-import { getReportes, getEmpresas } from '../../services/apiServices';
+import { getReportes, getEmpresas, updateReporte, deleteReporte, ejecutarPipeline } from '../../services/apiServices';
 import type { ReporteFinanciero, PaginatedResponse, Empresa } from '../../types/api';
 
 // --- Formateador de Fecha ---
@@ -37,6 +37,8 @@ export default function ProcessAudit() {
     gestion: '',
     estado_procesamiento: ''
   });
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   // 1. Obtener empresas para el filtro
   const { data: companiesData } = useApi<PaginatedResponse<Empresa>>(
@@ -45,7 +47,7 @@ export default function ProcessAudit() {
   );
 
   // 2. Obtener reportes con filtros y paginación
-  const { data, isLoading } = useApi<PaginatedResponse<ReporteFinanciero>>(
+  const { data, isLoading, refetch } = useApi<PaginatedResponse<ReporteFinanciero>>(
     () => getReportes({
       page,
       page_size: 10,
@@ -67,6 +69,52 @@ export default function ProcessAudit() {
     setPage(1);
   };
 
+  const showActionMsg = (msg: string) => {
+    setActionMsg(msg);
+    setTimeout(() => setActionMsg(null), 3000);
+  };
+
+  const handleRetry = async (reporte: ReporteFinanciero) => {
+    setActionLoading(reporte.id_reporte);
+    try {
+      await updateReporte(reporte.id_reporte, { estado_procesamiento: 'PENDIENTE' });
+      showActionMsg(`Reporte #${reporte.id_reporte} marcado como pendiente para reintentar.`);
+      refetch();
+    } catch {
+      showActionMsg('Error al reintentar el reporte.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReprocess = async (reporte: ReporteFinanciero) => {
+    if (!window.confirm(`¿Reprocesar reporte de ${reporte.empresa_nombre} (${reporte.gestion})?`)) return;
+    setActionLoading(reporte.id_reporte);
+    try {
+      await ejecutarPipeline(reporte.empresa, reporte.gestion, reporte.trimestre || 1);
+      showActionMsg(`Pipeline ejecutado para ${reporte.empresa_nombre} (${reporte.gestion}).`);
+      refetch();
+    } catch {
+      showActionMsg('Error al ejecutar el pipeline.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async (reporte: ReporteFinanciero) => {
+    if (!window.confirm(`¿Eliminar reporte #${reporte.id_reporte} de ${reporte.empresa_nombre}?`)) return;
+    setActionLoading(reporte.id_reporte);
+    try {
+      await deleteReporte(reporte.id_reporte);
+      showActionMsg(`Reporte #${reporte.id_reporte} eliminado.`);
+      refetch();
+    } catch {
+      showActionMsg('Error al eliminar el reporte.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const totalPages = data ? Math.ceil(data.count / 10) : 0;
 
   return (
@@ -86,7 +134,7 @@ export default function ProcessAudit() {
             name="empresa"
             value={filters.empresa}
             onChange={handleFilterChange}
-            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
           >
             <option value="">Todas las empresas</option>
             {companiesData?.results.map(emp => (
@@ -103,7 +151,7 @@ export default function ProcessAudit() {
             placeholder="Ej: 2024"
             value={filters.gestion}
             onChange={handleFilterChange}
-            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
           />
         </div>
 
@@ -113,7 +161,7 @@ export default function ProcessAudit() {
             name="estado_procesamiento"
             value={filters.estado_procesamiento}
             onChange={handleFilterChange}
-            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500/20 transition-all"
           >
             <option value="">Todos los estados</option>
             <option value="PENDIENTE">Pendiente</option>
@@ -126,12 +174,19 @@ export default function ProcessAudit() {
         <div className="flex items-end">
           <button
             onClick={clearFilters}
-            className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-bold transition-all"
+            className="w-full rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-700 transition-all hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
           >
             Limpiar Filtros
           </button>
         </div>
       </div>
+
+      {/* Mensaje de Acción */}
+      {actionMsg && (
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400">
+          {actionMsg}
+        </div>
+      )}
 
       {/* Tabla de Resultados */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -180,14 +235,39 @@ export default function ProcessAudit() {
                       {formatDateTime(reporte.updated_at)}
                     </td>
                     <td className="px-6 py-4">
-                      <a 
-                        href={reporte.url_pdf} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-brand-500 hover:text-brand-600 text-xs font-bold underline"
-                      >
-                        Ver PDF
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={reporte.url_pdf} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-brand-500 hover:text-brand-600 text-xs font-bold underline"
+                        >
+                          Ver PDF
+                        </a>
+                        {reporte.estado_procesamiento === 'ERROR' && (
+                          <button
+                            onClick={() => handleRetry(reporte)}
+                            disabled={actionLoading === reporte.id_reporte}
+                            className="rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 disabled:opacity-50"
+                          >
+                            Reintentar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleReprocess(reporte)}
+                          disabled={actionLoading === reporte.id_reporte}
+                          className="rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 disabled:opacity-50"
+                        >
+                          Reprocesar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(reporte)}
+                          disabled={actionLoading === reporte.id_reporte}
+                          className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 disabled:opacity-50"
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

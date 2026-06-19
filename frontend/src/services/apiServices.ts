@@ -14,10 +14,13 @@ import type {
   EmpresaParams,
   ReporteParams,
   DashboardKPIs,
+  ChatMessage,
   ChatRequest,
   ChatResponse,
   BiometricVerifyResponse,
   LivenessCheckResponse,
+  SimulationParams,
+  SimulationResult,
 } from '../types/api';
 
 // ──────────────────────────────────────────────────────────────
@@ -128,6 +131,46 @@ export const getAllUsuarios = async (): Promise<Usuario[]> => {
 };
 
 // ──────────────────────────────────────────────────────────────
+// ADMIN CRUD — Usuarios, Empresas, Sectores, Reportes
+// ──────────────────────────────────────────────────────────────
+
+export const createUsuario = (data: Partial<Usuario>) =>
+  apiClient.post<Usuario>('/usuarios/', data).then((r) => r.data);
+
+export const updateUsuario = (id: number, data: Partial<Usuario>) =>
+  apiClient.patch<Usuario>(`/usuarios/${id}/`, data).then((r) => r.data);
+
+export const deleteUsuario = (id: number) =>
+  apiClient.delete(`/usuarios/${id}/`).then((r) => r.data);
+
+export const cambiarGrupoUsuario = (id: number, nombreGrupo: string) =>
+  apiClient.post(`/usuarios/${id}/cambiar-grupo/`, { nombre_grupo: nombreGrupo }).then((r) => r.data);
+
+export const createEmpresa = (data: Partial<Empresa>) =>
+  apiClient.post<Empresa>('/empresas/', data).then((r) => r.data);
+
+export const updateEmpresa = (id: number, data: Partial<Empresa>) =>
+  apiClient.patch<Empresa>(`/empresas/${id}/`, data).then((r) => r.data);
+
+export const deleteEmpresa = (id: number) =>
+  apiClient.delete(`/empresas/${id}/`).then((r) => r.data);
+
+export const createSector = (data: Partial<SectorEmpresa>) =>
+  apiClient.post<SectorEmpresa>('/sectores/', data).then((r) => r.data);
+
+export const updateSector = (id: number, data: Partial<SectorEmpresa>) =>
+  apiClient.patch<SectorEmpresa>(`/sectores/${id}/`, data).then((r) => r.data);
+
+export const deleteSector = (id: number) =>
+  apiClient.delete(`/sectores/${id}/`).then((r) => r.data);
+
+export const updateReporte = (id: number, data: Partial<ReporteFinanciero>) =>
+  apiClient.patch<ReporteFinanciero>(`/reportes/${id}/`, data).then((r) => r.data);
+
+export const deleteReporte = (id: number) =>
+  apiClient.delete(`/reportes/${id}/`).then((r) => r.data);
+
+// ──────────────────────────────────────────────────────────────
 // CHAT
 // ──────────────────────────────────────────────────────────────
 
@@ -217,3 +260,46 @@ export const checkLiveness = (selfieImage: File) => {
     })
     .then((r) => r.data);
 };
+
+// ──────────────────────────────────────────────────────────────
+// DASHBOARD — Datos agregados para dashboards del frontend
+// ──────────────────────────────────────────────────────────────
+
+export interface DashboardData {
+  total_empresas: number;
+  total_sectores: number;
+  total_reportes: number;
+  total_usuarios: number;
+  empresas_procesadas: number;
+  reportes_procesados: number;
+  reportes_con_error: number;
+  reportes_pendientes: number;
+  ultimos_reportes: Array<{
+    empresa_nombre: string;
+    gestion: number;
+    trimestre: number | null;
+    estado_procesamiento: string;
+    updated_at: string;
+  }>;
+  empresas_por_sector: Array<{ sector_nombre: string; count: number }>;
+  reportes_por_estado: Array<{ estado: string; count: number }>;
+  ultimos_usuarios: Array<{
+    nombre: string;
+    email: string;
+    group_names: string[];
+    activo: boolean;
+    created_at: string;
+  }>;
+}
+
+export const getDashboardData = () =>
+  apiClient.get<DashboardData>('/dashboard/').then((r) => r.data);
+
+// ──────────────────────────────────────────────────────────────
+// SIMULADOR FINANCIERO
+// ──────────────────────────────────────────────────────────────
+
+export const simulateInvestment = (params: SimulationParams) =>
+  apiClient
+    .post<SimulationResult>('/simulator/execute/', params)
+    .then((r) => r.data);

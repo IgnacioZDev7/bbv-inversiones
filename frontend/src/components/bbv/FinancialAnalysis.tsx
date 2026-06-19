@@ -1,3 +1,5 @@
+import { calculateFinancialHealthScore, classifyHealthScore, healthLabelMap } from '../../utils/financialMetrics';
+
 interface Metric {
   id: number;
   reporte: number;
@@ -17,7 +19,6 @@ interface FinancialAnalysisProps {
 export default function FinancialAnalysis({ metrics }: FinancialAnalysisProps) {
   if (!metrics || metrics.length === 0) return null;
 
-  // Ordenar cronológicamente para obtener métricas actuales y anteriores
   const sortedMetrics = [...metrics].sort((a, b) => {
     if (a.gestion !== b.gestion) return b.gestion - a.gestion;
     return b.trimestre - a.trimestre;
@@ -32,44 +33,40 @@ export default function FinancialAnalysis({ metrics }: FinancialAnalysisProps) {
   const nPatrimonioAct = Number(latest.patrimonio || 0);
   const nPatrimonioPrev = Number(previous?.patrimonio || 0);
   const varPatrimonio = (nPatrimonioPrev !== 0) ? ((nPatrimonioAct - nPatrimonioPrev) / nPatrimonioPrev) : 0;
+  const nActivos = Number(latest.activos || 0);
+  const nPasivos = Number(latest.pasivos || 0);
+  const solvencia = nPasivos > 0 ? nActivos / nPasivos : 0;
 
-  // 1. Lógica de Clasificación Financiera (Académicamente defendible)
-  let isSaludable = false;
-  if (nLiquidez >= 1.2 && nEndeudamiento <= 0.6 && varPatrimonio >= 0) {
-    isSaludable = true;
-  }
+  const healthScore = calculateFinancialHealthScore({
+    liquidez: nLiquidez,
+    endeudamiento: nEndeudamiento,
+    crecimientoPatrimonial: varPatrimonio,
+    solvencia,
+  });
+  const status = classifyHealthScore(healthScore);
+  const labels = healthLabelMap[status];
 
-  let isRiesgoso = false;
-  if (nLiquidez < 1.0 || nEndeudamiento > 0.8 || varPatrimonio < -0.10) {
-    isRiesgoso = true;
-  }
-
-  // 2. Resolver Clasificación y Estilos
-  let status = "Moderado";
-  let statusColor = "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-500/5 border-yellow-200/50 dark:border-yellow-800/50";
+  let statusColor = "text-amber-700 bg-amber-50/50 dark:text-amber-400 dark:bg-amber-500/5 border-amber-200/50 dark:border-amber-800/50";
   let icon = (
     <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
   );
 
-  if (isSaludable && !isRiesgoso) {
-    status = "Saludable";
+  if (status === 'excelente' || status === 'saludable') {
     statusColor = "text-emerald-700 bg-emerald-50/50 dark:text-emerald-400 dark:bg-emerald-500/5 border-emerald-200/50 dark:border-emerald-800/50";
     icon = (
       <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
     );
-  } else if (isRiesgoso) {
-    status = "Riesgoso";
+  } else if (status === 'riesgo') {
     statusColor = "text-red-700 bg-red-50/50 dark:text-red-400 dark:bg-red-500/5 border-red-200/50 dark:border-red-800/50";
     icon = (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
     );
   }
 
-  // 3. Generación de Texto Neutral y Desglose de Indicadores
   let interpretationText = "";
-  if (status === "Saludable") {
+  if (status === 'excelente' || status === 'saludable') {
     interpretationText = "La entidad presenta una posición financiera sólida con capacidad de cobertura a corto plazo garantizada y un nivel de apalancamiento conservador.";
-  } else if (status === "Riesgoso") {
+  } else if (status === 'riesgo') {
     interpretationText = "La entidad muestra indicadores de atención prioritaria que podrían reflejar presión en la estabilidad operativa o estructural.";
   } else {
     interpretationText = "La entidad mantiene indicadores estables con variaciones moderadas, ubicándose dentro de los rangos de tolerancia convencionales.";
@@ -100,7 +97,7 @@ export default function FinancialAnalysis({ metrics }: FinancialAnalysisProps) {
         {icon}
         <div className="flex-1">
           <h4 className="text-lg font-bold pb-2 flex items-center gap-2">
-            Clasificación Financiera Preliminar: {status}
+            Salud Financiera: {labels.status} ({healthScore}/100)
           </h4>
           <p className="text-sm font-medium opacity-90 leading-relaxed mb-3">
             {interpretationText}

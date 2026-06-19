@@ -1,7 +1,7 @@
 import pytest
 from decimal import Decimal
 from apps.financials.models import Empresa, SectorEmpresa, ReporteFinanciero
-from apps.analytics.services import AnalysisEngine, SimulationService, RecommendationService
+from apps.analytics.services import AnalysisEngine, SimulationService, RecommendationService, calculate_financial_health_score
 from apps.analytics.models import IndicadorFinanciero, ValorIndicador
 
 @pytest.fixture
@@ -19,8 +19,6 @@ def base_data(db):
             "total_patrimonio": 600000,
             "total_activo_corriente": 200000,
             "total_pasivo_corriente": 100000,
-            "ingresos_totales": 500000,
-            "utilidad_neta": 50000
         }
     )
     return empresa, reporte
@@ -43,18 +41,16 @@ class TestAnalysisEngine:
         # Verificar Endeudamiento (400k / 1M = 0.4)
         end = ValorIndicador.objects.get(indicador=indicador, catalogo_indicador__codigo="END")
         assert end.valor == Decimal("0.4")
-        
-        # Verificar ROA (50k / 1M = 0.05)
-        roa = ValorIndicador.objects.get(indicador=indicador, catalogo_indicador__codigo="ROA")
-        assert roa.valor == Decimal("0.05")
 
     def test_score_logic(self, base_data):
         empresa, reporte = base_data
         engine = AnalysisEngine()
         indicador = engine.process_report(reporte.id_reporte)
         
-        # Con liq=2.0 (>1.2) y end=0.4 (<0.5), debería tener un score alto
-        assert indicador.score_financiero > 50
+        # Con liq=2.0, end=0.4, solv=2.5, score >= 60 (Saludable)
+        score = calculate_financial_health_score(liquidez=2.0, endeudamiento=0.4, crecimiento_patrimonial=0, solvencia=2.5)
+        assert score >= 60
+        assert indicador.score_financiero >= 60
 
 @pytest.mark.django_db
 class TestSimulationService:
@@ -79,11 +75,18 @@ class TestSimulationService:
         service = SimulationService()
         res = service.calculate_simulation(empresa.id_empresa, 1000, 5)
         
-        assert "escenarios" in res
-        assert "moderado" in res["escenarios"]
-        assert res["monto_inicial"] == 1000
+        assert "cagr" in res
+        assert "volatility" in res
+        assert "serie" in res
+        assert len(res["serie"]) == 5
+        assert "valor_futuro" in res
+        assert "roi" in res
+        assert "confidence_score" in res
+        assert "warnings" in res
+        assert "indicators" in res
         # Patrimonio creció de 600k a 750k (25%), el retorno debería ser positivo
-        assert res["escenarios"]["moderado"]["tasa_estimada"] > 0
+        assert res["cagr"] > 0
+        assert res["roi"] > 0
 
 @pytest.mark.django_db
 class TestRecommendationService:

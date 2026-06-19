@@ -1,15 +1,16 @@
 import type { ReporteFinanciero } from '../../types/api';
-import type { FinancialSnapshot } from '../../utils/financialMetrics';
-import { buildFinancialSnapshot } from '../../utils/financialMetrics';
+import type { FinancialSnapshot, FinancialStatus } from '../../utils/financialMetrics';
+import { buildFinancialSnapshot, healthLabelMap } from '../../utils/financialMetrics';
 
 type RiskGaugeProps =
   | { snapshot: FinancialSnapshot; reportes?: never }
   | { snapshot?: never; reportes: ReporteFinanciero[] };
 
-const riskConfig = {
-  healthy: { color: '#059669', label: 'Riesgo bajo' },
-  watch: { color: '#d97706', label: 'Riesgo medio' },
-  risk: { color: '#dc2626', label: 'Riesgo alto' },
+const riskConfig: Record<FinancialStatus, { color: string }> = {
+  excelente: { color: '#059669' },
+  saludable: { color: '#059669' },
+  observacion: { color: '#d97706' },
+  riesgo: { color: '#dc2626' },
 };
 
 /**
@@ -20,6 +21,7 @@ export default function RiskGauge(props: RiskGaugeProps) {
   const snapshot = 'snapshot' in props && props.snapshot ? props.snapshot : buildFinancialSnapshot(props.reportes);
   const riskValue = 100 - snapshot.score;
   const config = riskConfig[snapshot.status];
+  const labels = healthLabelMap[snapshot.status];
   const circumference = 126;
   const progress = Math.max(0, Math.min(100, riskValue));
 
@@ -65,7 +67,7 @@ export default function RiskGauge(props: RiskGaugeProps) {
         className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
         style={{ backgroundColor: `${config.color}18`, color: config.color }}
       >
-        {config.label}
+        {labels.risk}
       </span>
     </section>
   );

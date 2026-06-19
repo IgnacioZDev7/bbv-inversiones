@@ -1,14 +1,8 @@
 import { useMemo } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { Link } from 'react-router';
 import { useApi } from '../../hooks/useApi';
-import {
-  getDashboardKPIs,
-  getReportes,
-  getUsuarios,
-} from '../../services/apiServices';
-import type {
-  DashboardKPIs, ReporteFinanciero, PaginatedResponse, Usuario,
-} from '../../types/api';
+import { getDashboardData } from '../../services/apiServices';
+import type { DashboardData } from '../../services/apiServices';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, AreaChart, Area, Cell,
 } from 'recharts';
@@ -58,48 +52,32 @@ const stateLabels: Record<string, string> = {
 };
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate();
 
-  const { data: kpis } = useApi<DashboardKPIs>(getDashboardKPIs, []);
-  const { data: usersData } = useApi<PaginatedResponse<Usuario>>(() => getUsuarios({ page_size: 10 }), []);
-  const { data: reportsData } = useApi<PaginatedResponse<ReporteFinanciero>>(() => getReportes({ page_size: 100 }), []);
+  const { data: dashboardData } = useApi<DashboardData>(getDashboardData, []);
 
-  const usersList = usersData?.results ?? [];
-  const allReports = reportsData?.results ?? [];
-  const latestReports = allReports.slice(0, 10);
+  const usersList = dashboardData?.ultimos_usuarios ?? [];
+  const latestReports = dashboardData?.ultimos_reportes ?? [];
 
-  const stateDistribution = useMemo(() => {
-    const counts: Record<string, number> = {};
-    allReports.forEach((r) => {
-      counts[r.estado_procesamiento] = (counts[r.estado_procesamiento] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .filter(([, v]) => v > 0)
-      .map(([k, v]) => ({
-        name: stateLabels[k] || k,
-        value: v,
-        color: stateColors[k] || '#6b7280',
-        raw: k,
-      }));
-  }, [allReports]);
+  const stateDistribution = useMemo(() =>
+    (dashboardData?.reportes_por_estado ?? []).map((item) => ({
+      name: stateLabels[item.estado] || item.estado,
+      value: item.count,
+      color: stateColors[item.estado] || '#6b7280',
+      raw: item.estado,
+    })),
+  [dashboardData]);
 
-  const processedInSample = useMemo(
-    () => allReports.filter((r) => r.estado_procesamiento === 'PROCESADO').length,
-    [allReports],
-  );
-  const errorsInSample = useMemo(
-    () => allReports.filter((r) => r.estado_procesamiento === 'ERROR').length,
-    [allReports],
-  );
+  const processedInSample = dashboardData?.reportes_procesados ?? 0;
+  const errorsInSample = dashboardData?.reportes_con_error ?? 0;
 
   const kpisList = useMemo(() => [
-    { title: 'Usuarios Registrados', value: kpis?.total_usuarios, icon: <IconUsers />, color: 'bg-blue-600' },
-    { title: 'Empresas Activas', value: kpis?.total_empresas, icon: <IconBuilding />, color: 'bg-violet-600' },
-    { title: 'Sectores', value: kpis?.total_sectores, icon: <IconLayers />, color: 'bg-amber-500' },
-    { title: 'Reportes en Sistema', value: kpis?.total_reportes, icon: <IconDatabase />, color: 'bg-emerald-600' },
-    { title: 'Procesados (últ. 100)', value: processedInSample, icon: <IconCheck />, color: 'bg-green-600' },
-    { title: 'Con Error (últ. 100)', value: errorsInSample, icon: <IconError />, color: 'bg-red-600' },
-  ], [kpis, processedInSample, errorsInSample]);
+    { title: 'Usuarios Registrados', value: dashboardData?.total_usuarios, icon: <IconUsers />, color: 'bg-blue-600' },
+    { title: 'Empresas Activas', value: dashboardData?.total_empresas, icon: <IconBuilding />, color: 'bg-violet-600' },
+    { title: 'Sectores', value: dashboardData?.total_sectores, icon: <IconLayers />, color: 'bg-amber-500' },
+    { title: 'Reportes en Sistema', value: dashboardData?.total_reportes, icon: <IconDatabase />, color: 'bg-emerald-600' },
+    { title: 'Procesados', value: processedInSample, icon: <IconCheck />, color: 'bg-green-600' },
+    { title: 'Con Error', value: errorsInSample, icon: <IconError />, color: 'bg-red-600' },
+  ], [dashboardData, processedInSample, errorsInSample]);
 
   const systemActivity = useMemo(() => [
     { name: 'Lun', processed: 4, errors: 0 },
@@ -111,9 +89,9 @@ const AdminDashboard: React.FC = () => {
     { name: 'Dom', processed: 1, errors: 0 },
   ], []);
 
-  const sampleTotal = allReports.length || 1;
+  const totalReportCount = (dashboardData?.reportes_por_estado ?? []).reduce((s, i) => s + i.count, 0) || 1;
 
-  const loading = !kpis && !usersData && !reportsData;
+  const loading = !dashboardData;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -171,14 +149,14 @@ const AdminDashboard: React.FC = () => {
         {/* State Distribution */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm p-8">
           <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Distribución de Estados</h2>
-          <p className="text-[10px] text-gray-400 font-medium mb-6">Basado en los últimos {allReports.length} reportes</p>
+          <p className="text-[10px] text-gray-400 font-medium mb-6">Basado en {totalReportCount} reportes</p>
           <div className="h-48 flex items-center">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stateDistribution} layout="vertical" barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} width={90} />
-                <Tooltip formatter={(v: number) => [`${v} reportes`, 'Cantidad']} />
+                <Tooltip formatter={(v) => [`${v} reportes`, 'Cantidad']} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                   {stateDistribution.map((entry, idx) => (
                     <Cell key={idx} fill={entry.color} />
@@ -193,7 +171,7 @@ const AdminDashboard: React.FC = () => {
               <div key={d.raw} className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
                 <span className="text-[10px] font-bold text-gray-500 uppercase">{d.name}</span>
-                <span className="text-[10px] font-bold text-gray-900 dark:text-white">{((d.value / sampleTotal) * 100).toFixed(0)}%</span>
+                <span className="text-[10px] font-bold text-gray-900 dark:text-white">{((d.value / totalReportCount) * 100).toFixed(0)}%</span>
               </div>
             ))}
           </div>
@@ -209,14 +187,14 @@ const AdminDashboard: React.FC = () => {
             <Link to="/admin/users" className="text-[10px] font-bold text-brand-500 underline uppercase tracking-widest">Gestionar</Link>
           </div>
           <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-            {usersList.map((u) => (
-              <div key={u.id_usuario} className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+            {usersList.map((u, idx) => (
+              <div key={idx} className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
-                    {(u.nombre || u.username || '?').slice(0, 1).toUpperCase()}
+                    {(u.nombre || '?').slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{u.nombre || u.username}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{u.nombre}</p>
                     <p className="text-[10px] text-gray-400 font-medium truncate">{u.email}</p>
                   </div>
                 </div>
@@ -238,11 +216,11 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-gray-50 dark:border-gray-700 flex justify-between items-center">
             <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Últimos Reportes</h2>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{allReports.length} registros</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{latestReports.length} registros</span>
           </div>
           <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-            {latestReports.map((r) => (
-              <div key={r.id_reporte} className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+            {latestReports.map((r, idx) => (
+              <div key={idx} className="px-8 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{r.empresa_nombre}</p>
                   <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">

@@ -8,7 +8,7 @@ const STORAGE_KEY = 'bbv-chat-conversations';
 const QUICK_QUESTIONS = [
   '¿Cómo está el mercado hoy?',
   'Recomiéndame empresas del sector financiero',
-  '¿Cuál es el ROE de las mejores empresas?',
+  '¿Cuál es el endeudamiento de las mejores empresas?',
   'Analiza la liquidez del sector industrial',
   '¿Qué empresas tienen mejor patrimonio?',
   'Compara los indicadores de los últimos 3 años',
@@ -149,7 +149,7 @@ export default function ChatPage() {
         <div className="border-b border-gray-100 p-4 dark:border-gray-700">
           <button
             onClick={createNewConversation}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
           >
             <PlusIcon className="h-4 w-4" />
             Nueva conversación
@@ -165,7 +165,7 @@ export default function ChatPage() {
               onClick={() => setActiveId(conv.id)}
               className={`group mb-1 flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
                 activeId === conv.id
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300'
                   : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               }`}
             >
@@ -184,8 +184,8 @@ export default function ChatPage() {
       <main className="flex flex-1 flex-col bg-gray-50 dark:bg-gray-950">
         {!activeConv ? (
           <div className="flex flex-1 flex-col items-center justify-center px-4">
-            <div className="mb-6 rounded-2xl bg-blue-100 p-4 dark:bg-blue-500/10">
-              <ChatIcon className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+            <div className="mb-6 rounded-2xl bg-brand-100 p-4 dark:bg-brand-500/10">
+              <ChatIcon className="h-10 w-10 text-brand-500 dark:text-brand-400" />
             </div>
             <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Asistente BBV</h2>
             <p className="mb-8 max-w-md text-center text-sm text-gray-500 dark:text-gray-400">
@@ -200,7 +200,7 @@ export default function ChatPage() {
                     createNewConversation();
                     setTimeout(() => handleSend(q), 50);
                   }}
-                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
+                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-brand-300 hover:text-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-brand-500 dark:hover:text-brand-400"
                 >
                   {q}
                 </button>
@@ -220,7 +220,7 @@ export default function ChatPage() {
                       <button
                         key={q}
                         onClick={() => handleSend(q)}
-                        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
+                        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-brand-300 hover:text-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-brand-500 dark:hover:text-brand-400"
                       >
                         {q}
                       </button>
@@ -233,7 +233,7 @@ export default function ChatPage() {
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-brand-500 text-white'
                         : 'border border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
                     }`}
                   >
@@ -245,15 +245,15 @@ export default function ChatPage() {
                 <div className="mb-4 flex justify-start">
                   <div className="flex max-w-[75%] items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                     <span
-                      className="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+                      className="h-2 w-2 animate-bounce rounded-full bg-brand-400"
                       style={{ animationDelay: '0ms' }}
                     />
                     <span
-                      className="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+                      className="h-2 w-2 animate-bounce rounded-full bg-brand-400"
                       style={{ animationDelay: '150ms' }}
                     />
                     <span
-                      className="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+                      className="h-2 w-2 animate-bounce rounded-full bg-brand-400"
                       style={{ animationDelay: '300ms' }}
                     />
                   </div>
@@ -271,12 +271,12 @@ export default function ChatPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="Escribe tu consulta sobre empresas, indicadores..."
                   rows={1}
-                  className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-500"
+                  className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 dark:focus:border-brand-500"
                 />
                 <button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || sending}
-                  className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <PaperPlaneIcon className="h-5 w-5" />
                 </button>

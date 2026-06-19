@@ -6,20 +6,26 @@ interface FinancialHealthScoreProps {
   audience?: 'analyst' | 'investor';
 }
 
-const statusStyles = {
-  healthy: {
+const statusStyles: Record<string, { ring: string; text: string; bar: string; bg: string }> = {
+  excelente: {
     ring: 'ring-emerald-200 dark:ring-emerald-500/30',
     text: 'text-emerald-700 dark:text-emerald-300',
     bar: 'bg-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-500/10',
   },
-  watch: {
+  saludable: {
+    ring: 'ring-emerald-200 dark:ring-emerald-500/30',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    bar: 'bg-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+  },
+  observacion: {
     ring: 'ring-amber-200 dark:ring-amber-500/30',
     text: 'text-amber-700 dark:text-amber-300',
     bar: 'bg-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-500/10',
   },
-  risk: {
+  riesgo: {
     ring: 'ring-red-200 dark:ring-red-500/30',
     text: 'text-red-700 dark:text-red-300',
     bar: 'bg-red-500',

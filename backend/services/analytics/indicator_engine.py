@@ -9,8 +9,8 @@ class IndicatorEngine:
         activo_corriente = datos_limpios.get("total_activo_corriente")
         pasivo_corriente = datos_limpios.get("total_pasivo_corriente")
 
+        total_activo = datos_limpios.get("total_activo")
         total_pasivo = datos_limpios.get("total_pasivo")
-        total_patrimonio = datos_limpios.get("total_patrimonio")
 
         # Liquidez Corriente
         if (
@@ -22,14 +22,14 @@ class IndicatorEngine:
                 activo_corriente / pasivo_corriente
             )
 
-        # Endeudamiento
+        # Endeudamiento (Pasivo / Activo)
         if (
             total_pasivo is not None
-            and total_patrimonio is not None
-            and total_patrimonio > 0
+            and total_activo is not None
+            and total_activo > 0
         ):
             indicators["endeudamiento"] = (
-                total_pasivo / total_patrimonio
+                total_pasivo / total_activo
             )
 
         return {

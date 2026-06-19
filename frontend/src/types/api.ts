@@ -123,6 +123,45 @@ export interface ChatResponse {
   conversation_id: string;
 }
 
+export interface SimulationParams {
+  empresa_id: number;
+  monto: number;
+  horizonte: number;
+  modo?: 'basico' | 'avanzado';
+}
+
+export interface SimulationYear {
+  year: number;
+  value: number;
+  p25: number;
+  p75: number;
+}
+
+export interface SimulationResult {
+  cagr: number;
+  volatility: number;
+  backtesting_error: number;
+  confidence_score: 'Alta' | 'Media' | 'Baja';
+  outliers: boolean;
+  valor_futuro: number;
+  roi: number;
+  modo: 'basico' | 'avanzado';
+  serie: SimulationYear[];
+  warnings?: string[];
+  indicators?: Record<string, IndicatorInfo>;
+  health_score?: number;
+  health_label?: string;
+}
+
+export interface IndicatorInfo {
+  valor: number | null;
+  estado: string;
+  descripcion: string;
+  numerador?: number;
+  denominador?: number;
+  formula?: string;
+}
+
 export interface BiometricVerifyResponse {
   verified: boolean;
   similarity: number;

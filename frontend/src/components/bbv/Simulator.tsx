@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
 import { useFinancialSimulator } from '../../agents/useFinancialSimulator';
+import type { IndicatorInfo } from '../../types/api';
 
 const { createChart, ColorType } = LightweightCharts;
 
@@ -8,17 +9,34 @@ interface SimulatorProps {
   companies: any[];
 }
 
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4M12 8h.01" />
+    </svg>
+  );
+}
+
+const KPI_TOOLTIPS: Record<string, string> = {
+  cagr: 'Tasa de Crecimiento Anual Compuesto (CAGR). Representa la tasa media de crecimiento anual del patrimonio histórico de la empresa, expresada como porcentaje.',
+  volatility: 'Desviación estándar de los rendimientos históricos. Mide cuánto fluctúa el patrimonio de la empresa respecto a su promedio. A mayor volatilidad, mayor incertidumbre.',
+  backtesting_error: 'Error MAPE (Mean Absolute Percentage Error) del backtesting. Indica qué tan precisas habrían sido las proyecciones del modelo si se hubieran aplicado en el pasado.',
+  roi: 'Retorno sobre la Inversión (ROI). Ganancia total proyectada como porcentaje del capital inicial invertido, asumiendo el horizonte temporal seleccionado.',
+};
+
 export default function Simulator({ companies }: SimulatorProps) {
   const { simulate, loading, error, result } = useFinancialSimulator();
   
   const [params, setParams] = useState({
-    empresa: companies.length > 0 ? companies[0].id : '',
+    empresa: companies.length > 0 ? companies[0].id_empresa : '',
     monto: 10000,
     anios: 5,
     escenario: 'base' as 'conservador' | 'base' | 'optimista',
     modo: 'avanzado' as 'basico' | 'avanzado'
   });
 
+  const [tooltip, setTooltip] = useState<string | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
 
@@ -54,6 +72,11 @@ export default function Simulator({ companies }: SimulatorProps) {
         visible: true,
         borderColor: '#1e293b',
       },
+      rightPriceScale: {
+        visible: true,
+        borderColor: '#1e293b',
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
     });
 
     if (result.modo === 'avanzado') {
@@ -67,9 +90,10 @@ export default function Simulator({ companies }: SimulatorProps) {
       });
       const p25Series = chart.addLineSeries({ color: '#ef4444', lineWidth: 1, lineStyle: 2, title: 'Pesimista (P25)' });
 
-      const tBase = result.serie.map(i => ({ time: `${2024 + i.year}-01-01`, value: i.value }));
-      const tP25 = result.serie.map(i => ({ time: `${2024 + i.year}-01-01`, value: i.p25 }));
-      const tP75 = result.serie.map(i => ({ time: `${2024 + i.year}-01-01`, value: i.p75 }));
+      const baseYear = 2024;
+      const tBase = result.serie.map(i => ({ time: `${baseYear + i.year}-01-01`, value: i.value }));
+      const tP25 = result.serie.map(i => ({ time: `${baseYear + i.year}-01-01`, value: i.p25 }));
+      const tP75 = result.serie.map(i => ({ time: `${baseYear + i.year}-01-01`, value: i.p75 }));
 
       p75Series.setData(tP75 as any);
       baseSeries.setData(tBase as any);
@@ -82,7 +106,8 @@ export default function Simulator({ companies }: SimulatorProps) {
         lineWidth: 3, 
         title: 'CAGR Directo' 
       });
-      const tBase = result.serie.map(i => ({ time: `${2024 + i.year}-01-01`, value: i.value }));
+      const baseYear = 2024;
+      const tBase = result.serie.map(i => ({ time: `${baseYear + i.year}-01-01`, value: i.value }));
       baseSeries.setData(tBase as any);
     }
 
@@ -111,13 +136,37 @@ export default function Simulator({ companies }: SimulatorProps) {
     }
   };
 
+  const getIndicatorColor = (estado: string) => {
+    if (['Saludable', 'Sólida', 'Sano', 'Bajo', 'Positivo', 'Aceptable'].includes(estado)) return 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-500/10 dark:border-green-500/20';
+    if (['Moderado', 'Elevado', 'Precaria', 'Débil'].includes(estado)) return 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20';
+    return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/20';
+  };
+
+  const renderKpiCard = (label: string, value: string, tooltipKey: string, color?: string) => (
+    <div className="p-6 rounded-3xl bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.05] group relative">
+      <div className="flex items-center gap-1.5 mb-2">
+        <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">{label}</p>
+        <button
+          onMouseEnter={() => setTooltip(KPI_TOOLTIPS[tooltipKey])}
+          onMouseLeave={() => setTooltip(null)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <InfoIcon className="h-3 w-3 text-gray-400 hover:text-brand-500" />
+        </button>
+      </div>
+      <h4 className={`text-xl font-black ${color || 'text-gray-900 dark:text-white'}`}>
+        {value}
+      </h4>
+    </div>
+  );
+
   return (
     <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <h3 className="text-2xl font-black text-gray-900 dark:text-white">
-              Simulator <span className="text-brand-500">v2.0</span>
+              Simulador <span className="text-brand-500">IA</span>
             </h3>
             {result && (
               <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getConfidenceColor(result.confidence_score)}`}>
@@ -126,7 +175,7 @@ export default function Simulator({ companies }: SimulatorProps) {
             )}
           </div>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Análisis estadístico avanzado basado en comportamiento patrimonial histórico.
+            Proyección basada en comportamiento patrimonial histórico.
           </p>
         </div>
         
@@ -158,7 +207,7 @@ export default function Simulator({ companies }: SimulatorProps) {
           >
             <option value="">Seleccionar empresa...</option>
             {companies.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.id_empresa} value={c.id_empresa}>{c.nombre}</option>
             ))}
           </select>
         </div>
@@ -218,42 +267,76 @@ export default function Simulator({ companies }: SimulatorProps) {
 
       {result && (
         <div className="space-y-10 animate-fade-in">
+          {tooltip && (
+            <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 text-[10px] text-gray-300 leading-relaxed shadow-2xl transition-opacity">
+              {tooltip}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="p-6 rounded-3xl bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.05] group hover:border-brand-500/30 transition-all">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-2">CAGR Real</p>
-              <h4 className="text-xl font-black text-gray-900 dark:text-white">
-                {(result.cagr * 100).toFixed(2)}%
-              </h4>
-            </div>
-            <div className="p-6 rounded-3xl bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.05]">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-2">Volatilidad (σ)</p>
-              <h4 className="text-xl font-black text-gray-900 dark:text-white">
-                {(result.volatility * 100).toFixed(2)}%
-              </h4>
-            </div>
-            <div className="p-6 rounded-3xl bg-brand-500/5 border border-brand-500/10 group hover:bg-brand-500/10 transition-all">
-              <p className="text-[9px] text-brand-500 uppercase font-black tracking-widest mb-2">Error Validación</p>
-              <h4 className="text-xl font-black text-brand-600 dark:text-brand-400">
-                {result.backtesting_error}%
-              </h4>
-              <p className="text-[8px] text-brand-400 mt-1 font-bold">MAPE (Backtesting)</p>
-            </div>
-            <div className="p-6 rounded-3xl bg-gray-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.05]">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-2">ROI Proyectado</p>
-              <h4 className="text-xl font-black text-green-500">
-                {result.roi.toFixed(1)}%
-              </h4>
-            </div>
+            {renderKpiCard('CAGR', `${(result.cagr * 100).toFixed(2)}%`, 'cagr')}
+            {renderKpiCard('Volatilidad (σ)', `${(result.volatility * 100).toFixed(2)}%`, 'volatility')}
+            {renderKpiCard('Error Validación', `${result.backtesting_error}%`, 'backtesting_error', 'text-brand-600 dark:text-brand-400')}
+            {renderKpiCard('ROI Proyectado', `${result.roi.toFixed(1)}%`, 'roi', 'text-green-500')}
           </div>
+
+          {result.health_score != null && (
+            <div className={`p-5 rounded-2xl border ${
+              result.health_score >= 80 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+              result.health_score >= 60 ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+              result.health_score >= 40 ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400' :
+              'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">
+                    Score de Salud Financiera (Global)
+                  </p>
+                  <p className="text-[9px] opacity-70 font-medium">
+                    35% Liquidez · 35% Endeudamiento · 20% Crecimiento Patrimonial · 10% Solvencia
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black">{result.health_score}</span>
+                  <span className="text-sm opacity-70">/100</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest">{result.health_label}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {result.warnings && result.warnings.length > 0 && (
+            <div className="space-y-2">
+              {result.warnings.map((w, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-relaxed">
+                  ⚠ {w}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <div className="lg:col-span-2 space-y-6">
-              <div ref={chartContainerRef} className="h-[380px] w-full" />
+              <div>
+                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2 text-center">
+                  Proyección de Valor Patrimonial (Eje X: Años · Eje Y: Bs.)
+                </p>
+                <div ref={chartContainerRef} className="h-[380px] w-full" />
+              </div>
               {result.modo === 'avanzado' && (
-                <div className="flex flex-wrap items-center justify-center gap-8 text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">
-                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50"></span> Mediana</span>
-                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-green-500 shadow-lg shadow-green-500/50"></span> P75 (Optimista)</span>
-                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></span> P25 (Pesimista)</span>
+                <div className="flex flex-wrap items-center justify-center gap-6 text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50" />
+                    P50 — Mediana (escenario base)
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-500 shadow-lg shadow-green-500/50" />
+                    P75 — Optimista (CAGR + 1σ)
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
+                    P25 — Pesimista (CAGR − 1σ)
+                  </span>
                 </div>
               )}
             </div>
@@ -261,7 +344,12 @@ export default function Simulator({ companies }: SimulatorProps) {
             <div className="space-y-6">
               <div className="p-8 rounded-[2.5rem] bg-slate-950 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden group">
                 <div className="absolute -top-10 -right-10 h-32 w-32 bg-brand-500/10 rounded-full blur-3xl group-hover:bg-brand-500/20 transition-all" />
-                <p className="text-[10px] text-brand-400 uppercase font-black tracking-[0.3em] mb-3">Valor Futuro Estimado</p>
+                <p className="text-[10px] text-brand-400 uppercase font-black tracking-[0.3em] mb-3">
+                  Valor Futuro Estimado
+                </p>
+                <p className="text-[8px] text-gray-500 uppercase font-bold tracking-wider mb-1">
+                  Capital final proyectado a {params.anios} año(s)
+                </p>
                 <h4 className="text-4xl font-black text-white mb-8 tracking-tighter">
                   Bs. {result.valor_futuro.toLocaleString()}
                 </h4>
@@ -274,8 +362,8 @@ export default function Simulator({ companies }: SimulatorProps) {
                     </h5>
                     <p className="text-[10px] text-gray-400 leading-relaxed font-medium italic">
                       {result.modo === 'avanzado' 
-                        ? 'Modelo Probabilístico Monte Carlo (500 iteraciones) con truncamiento de outliers (±2σ) y validación mediante Backtesting histórico.'
-                        : 'Modelo Determinístico basado en Tasa de Crecimiento Anual Compuesta (CAGR) absoluta sin considerar factores de riesgo o volatilidad.'}
+                        ? 'Modelo probabilístico: CAGR histórico ± 1σ genera los percentiles P25 y P75.'
+                        : 'Modelo determinístico: CAGR histórico aplicado linealmente año a año.'}
                     </p>
                   </div>
 
@@ -284,7 +372,7 @@ export default function Simulator({ companies }: SimulatorProps) {
                       Nota de Transparencia:
                     </p>
                     <p className="text-[10px] text-brand-500/80 leading-relaxed font-black italic">
-                      “Los percentiles son resultados de simulación estadística basados en comportamiento histórico, no constituyen probabilidades exactas ni garantías de rendimiento futuro.”
+                      Las proyecciones se basan en comportamiento histórico. El rendimiento pasado no garantiza resultados futuros.
                     </p>
                   </div>
                 </div>
@@ -296,12 +384,59 @@ export default function Simulator({ companies }: SimulatorProps) {
                     Gestión de Outliers:
                   </p>
                   <p className="text-[10px] text-amber-500/70 leading-relaxed font-medium italic">
-                    Se han excluido variaciones extremas (&gt;300%) en el cálculo de volatilidad para evitar sesgos en el "Cap Dinámico".
+                    Se excluyeron variaciones extremas (&gt;300%) para evitar distorsión en la proyección.
                   </p>
                 </div>
               )}
             </div>
           </div>
+
+          {result.indicators && Object.keys(result.indicators).length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">
+                Indicadores Financieros Reales
+              </h4>
+              <p className="text-[10px] text-gray-400 font-medium">
+                Calculados con los datos contables disponibles del último reporte procesado.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(result.indicators).map(([key, ind]) => {
+                  const info = ind as IndicatorInfo;
+                  return (
+                    <div key={key} className={`p-5 rounded-2xl border ${getIndicatorColor(info.estado)}`}>
+                      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mb-1">
+                        {key.replace(/_/g, ' ')}
+                      </p>
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className="text-lg font-black text-gray-900 dark:text-white">
+                          {info.valor !== null && info.valor !== undefined
+                            ? key.includes('crecimiento')
+                              ? `${(info.valor * 100).toFixed(1)}%`
+                              : info.valor.toLocaleString()
+                            : '—'}
+                        </span>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${getIndicatorColor(info.estado)}`}>
+                          {info.estado}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 leading-relaxed">
+                        {info.descripcion}
+                      </p>
+                      {(info as any).formula && (
+                        <p className="text-[8px] text-gray-400 font-mono mt-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                          {(info as any).formula} = {info.valor !== null && info.valor !== undefined
+                            ? key.includes('crecimiento')
+                              ? `${(info.valor * 100).toFixed(1)}%`
+                              : info.valor.toLocaleString()
+                            : '—'}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

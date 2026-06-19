@@ -6,6 +6,7 @@ import NotFound from "./pages/OtherPage/NotFound";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { AuthProvider } from "./context/AuthContext";
+import { UIFeedbackProvider } from "./context/UIFeedbackContext";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Home from "./pages/Dashboard/Home";
 import CompleteProfile from "./pages/Profile/CompleteProfile";
@@ -25,6 +26,7 @@ import { InvestorDashboard, InvestorCompanies, InvestorIndicators, Simulations, 
 
 export default function App() {
   return (
+    <UIFeedbackProvider>
     <AuthProvider>
       <Router>
         <ScrollToTop />
@@ -83,5 +85,6 @@ export default function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </UIFeedbackProvider>
   );
 }

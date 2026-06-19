@@ -1,12 +1,10 @@
 import type { ReporteFinanciero } from '../../types/api';
+import { calculateFinancialHealthScore, classifyHealthScore, healthLabelMap } from '../../utils/financialMetrics';
 
 interface FinancialAnalysisProps {
   reportes: ReporteFinanciero[];
 }
 
-/**
- * Extrae valores numéricos de datos_extraidos_json de forma segura.
- */
 const getVal = (r: ReporteFinanciero, key: string): number => {
   const d = r.datos_extraidos_json || {};
   const val = d[key];
@@ -16,7 +14,6 @@ const getVal = (r: ReporteFinanciero, key: string): number => {
 export default function FinancialAnalysis({ reportes }: FinancialAnalysisProps) {
   if (!reportes || reportes.length === 0) return null;
 
-  // Ordenar cronológicamente descendente (más reciente primero)
   const sorted = [...reportes].sort((a, b) => {
     if (a.gestion !== b.gestion) return b.gestion - a.gestion;
     return (b.trimestre || 0) - (a.trimestre || 0);
@@ -25,7 +22,6 @@ export default function FinancialAnalysis({ reportes }: FinancialAnalysisProps) 
   const latest = sorted[0];
   const previous = sorted.length > 1 ? sorted[1] : null;
 
-  // Datos Reales (Balance)
   const activo = getVal(latest, 'total_activo');
   const pasivo = getVal(latest, 'total_pasivo');
   const patrimonio = getVal(latest, 'total_patrimonio');
@@ -34,22 +30,24 @@ export default function FinancialAnalysis({ reportes }: FinancialAnalysisProps) 
 
   const patPrev = previous ? getVal(previous, 'total_patrimonio') : 0;
 
-  // Cálculos Derivados
   const nLiquidez = pc > 0 ? ac / pc : 0;
   const nEndeudamiento = activo > 0 ? pasivo / activo : 0;
   const varPatrimonio = patPrev !== 0 ? (patrimonio - patPrev) / patPrev : 0;
+  const solvencia = pasivo > 0 ? activo / pasivo : 0;
 
-  // Lógica de Clasificación
-  let status = "Moderado";
-  let statusColor = "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-500/5 border-yellow-200/50";
-  let isRiesgoso = (nLiquidez < 1.0 || nEndeudamiento > 0.8 || varPatrimonio < -0.10);
-  let isSaludable = (nLiquidez >= 1.2 && nEndeudamiento <= 0.6 && varPatrimonio >= 0);
+  const healthScore = calculateFinancialHealthScore({
+    liquidez: nLiquidez,
+    endeudamiento: nEndeudamiento,
+    crecimientoPatrimonial: varPatrimonio,
+    solvencia,
+  });
+  const status = classifyHealthScore(healthScore);
+  const labels = healthLabelMap[status];
 
-  if (isSaludable && !isRiesgoso) {
-    status = "Saludable";
+  let statusColor = "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/5 border-amber-200/50";
+  if (status === 'excelente' || status === 'saludable') {
     statusColor = "text-emerald-700 bg-emerald-50/50 dark:text-emerald-400 dark:bg-emerald-500/5 border-emerald-200/50";
-  } else if (isRiesgoso) {
-    status = "Riesgoso";
+  } else if (status === 'riesgo') {
     statusColor = "text-red-700 bg-red-50/50 dark:text-red-400 dark:bg-red-500/5 border-red-200/50";
   }
 
@@ -57,7 +55,7 @@ export default function FinancialAnalysis({ reportes }: FinancialAnalysisProps) 
     <div className={`h-full flex flex-col justify-center p-6 rounded-2xl border ${statusColor}`}>
       <div className="flex gap-4">
         <div className="flex-1">
-          <h4 className="text-lg font-bold pb-2">Diagnóstico de Balance: {status}</h4>
+          <h4 className="text-lg font-bold pb-2">Salud Financiera: {labels.status} ({healthScore}/100)</h4>
           <p className="text-sm font-medium opacity-90 leading-relaxed mb-4">
             Análisis automático basado en solvencia y liquidez estructural.
           </p>

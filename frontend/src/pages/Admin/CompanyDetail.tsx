@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { useApi } from '../../hooks/useApi';
-import { getEmpresaById, getReportesByEmpresa, getEmpresas } from '../../services/apiServices';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { getEmpresaById, getReportesByEmpresa, getEmpresas, updateEmpresa, deleteEmpresa, ejecutarPipeline } from '../../services/apiServices';
 import type { Empresa, ReporteFinanciero, PaginatedResponse } from '../../types/api';
 
 // ── Estado badge ────────────────────────────────────────────────
@@ -31,11 +32,24 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
 const CompanyDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { notify, confirm } = useUIFeedback();
   const empresaId = Number(id);
   const [page, setPage] = useState(1);
 
+  // Edición de empresa
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ nombre: '', sigla: '', descripcion: '', sitio_web: '', activa: false });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Pipeline
+  const [pipelineOpen, setPipelineOpen] = useState(false);
+  const [gestion, setGestion] = useState(new Date().getFullYear());
+  const [trimestre, setTrimestre] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [ejecutando, setEjecutando] = useState(false);
+  const [pipelineMsg, setPipelineMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // 1. Datos de la empresa
-  const { data: empresa, isLoading: empLoading, error: empError } = useApi<Empresa>(
+  const { data: empresa, isLoading: empLoading, error: empError, refetch: refetchEmpresa } = useApi<Empresa>(
     () => getEmpresaById(empresaId),
     [empresaId]
   );
@@ -64,6 +78,74 @@ const CompanyDetail: React.FC = () => {
   const handleCompanyChange = (newId: string) => {
     navigate(`/admin/companies/${newId}`);
     setPage(1);
+  };
+
+  const startEditing = () => {
+    if (!empresa) return;
+    setEditForm({
+      nombre: empresa.nombre,
+      sigla: empresa.sigla ?? '',
+      descripcion: empresa.descripcion ?? '',
+      sitio_web: empresa.sitio_web ?? '',
+      activa: empresa.activa,
+    });
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const saveEditing = async () => {
+    setSavingEdit(true);
+    try {
+      const payload: Record<string, unknown> = {
+        nombre: editForm.nombre,
+        activa: editForm.activa,
+      };
+      if (editForm.sigla) payload.sigla = editForm.sigla;
+      if (editForm.descripcion) payload.descripcion = editForm.descripcion;
+      if (editForm.sitio_web) payload.sitio_web = editForm.sitio_web;
+      await updateEmpresa(empresaId, payload);
+      setEditing(false);
+      refetchEmpresa();
+      notify('Cambios guardados correctamente.', 'success');
+    } catch {
+      notify('Error al guardar los cambios.', 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteCompany = async () => {
+    if (!empresa) return;
+    const ok = await confirm({
+      title: 'Eliminar empresa',
+      message: `¿Estás seguro de eliminar "${empresa.nombre}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await deleteEmpresa(empresaId);
+      navigate('/admin/companies');
+    } catch {
+      notify('Error al eliminar la empresa.', 'error');
+    }
+  };
+
+  const handleEjecutarPipeline = async () => {
+    setEjecutando(true);
+    setPipelineMsg(null);
+    try {
+      await ejecutarPipeline(empresaId, gestion, trimestre);
+      setPipelineMsg({ type: 'success', text: 'Pipeline ejecutado correctamente.' });
+      setTimeout(() => { setPipelineOpen(false); setPipelineMsg(null); }, 2000);
+    } catch {
+      setPipelineMsg({ type: 'error', text: 'Error al ejecutar el pipeline.' });
+    } finally {
+      setEjecutando(false);
+    }
   };
 
   if (empError) {
@@ -116,12 +198,26 @@ const CompanyDetail: React.FC = () => {
                 </div>
             </div>
             {empresa && (
-                <button 
-                    onClick={() => navigate(`/analyst/indicators?empresa=${empresa.id_empresa}`)}
-                    className="px-6 py-3 bg-brand-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-500/20 hover:bg-brand-600 active:scale-95 transition-all"
-                >
-                    Analizar Gráficos
-                </button>
+                <>
+                    <button
+                        onClick={() => setPipelineOpen(true)}
+                        className="px-6 py-3 bg-gray-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-gray-700/20 hover:bg-gray-800 active:scale-95 transition-all dark:bg-gray-600 dark:hover:bg-gray-500"
+                    >
+                        Actualizar Reportes
+                    </button>
+                    <button
+                        onClick={() => navigate(`/analyst/indicators?empresa=${empresa.id_empresa}`)}
+                        className="px-6 py-3 bg-brand-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-500/20 hover:bg-brand-600 active:scale-95 transition-all"
+                    >
+                        Analizar Gráficos
+                    </button>
+                    <button 
+                        onClick={handleDeleteCompany}
+                        className="px-6 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 active:scale-95 transition-all"
+                    >
+                        Eliminar Empresa
+                    </button>
+                </>
             )}
         </div>
       </div>
@@ -130,33 +226,86 @@ const CompanyDetail: React.FC = () => {
         {/* Info Card */}
         <div className="lg:col-span-1 space-y-6">
             <div className="rounded-3xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow-sm">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Información General</h3>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Información General</h3>
+                    {empresa && !editing && (
+                        <button onClick={startEditing} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                            Editar
+                        </button>
+                    )}
+                </div>
                 <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
                     {empLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
                             <div key={i} className="py-4 animate-pulse"><div className="h-4 w-full bg-gray-100 dark:bg-gray-700 rounded" /></div>
                         ))
                     ) : empresa ? (
-                        <>
-                            <InfoRow label="Código BBV" value={<span className="font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded">{empresa.codigo_bbv}</span>} />
-                            <InfoRow label="Sigla" value={empresa.sigla} />
-                            <InfoRow label="Sector" value={<span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs">{empresa.sector_nombre}</span>} />
-                            <InfoRow label="Sitio Web" value={
-                                empresa.sitio_web ? (
-                                    <a href={empresa.sitio_web} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate block max-w-[150px]">
-                                        {empresa.sitio_web.replace('https://', '').replace('http://', '')}
-                                    </a>
-                                ) : null
-                            } />
-                            <div className="py-6">
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Descripción</label>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">
-                                    {empresa.descripcion || 'Sin descripción registrada.'}
-                                </p>
-                            </div>
-                        </>
+                        editing ? (
+                            <>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Nombre</span>
+                                    <input type="text" value={editForm.nombre} onChange={(e) => setEditForm(p => ({ ...p, nombre: e.target.value }))} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all" />
+                                </div>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Código BBV</span>
+                                    <span className="text-sm text-gray-900 dark:text-white font-medium font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded">{empresa.codigo_bbv}</span>
+                                </div>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sigla</span>
+                                    <input type="text" value={editForm.sigla} onChange={(e) => setEditForm(p => ({ ...p, sigla: e.target.value }))} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all" />
+                                </div>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sector</span>
+                                    <span className="text-sm text-gray-900 dark:text-white font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs">{empresa.sector_nombre}</span>
+                                </div>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sitio Web</span>
+                                    <input type="url" value={editForm.sitio_web} onChange={(e) => setEditForm(p => ({ ...p, sitio_web: e.target.value }))} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all" placeholder="https://" />
+                                </div>
+                                <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Activa</span>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={editForm.activa} onChange={(e) => setEditForm(p => ({ ...p, activa: e.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20" />
+                                        <span className="text-sm text-gray-700 dark:text-gray-200">{editForm.activa ? 'Sí' : 'No'}</span>
+                                    </label>
+                                </div>
+                                <div className="py-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Descripción</label>
+                                    <textarea value={editForm.descripcion} onChange={(e) => setEditForm(p => ({ ...p, descripcion: e.target.value }))} rows={3} className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all resize-none" />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <InfoRow label="Código BBV" value={<span className="font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded">{empresa.codigo_bbv}</span>} />
+                                <InfoRow label="Sigla" value={empresa.sigla} />
+                                <InfoRow label="Sector" value={<span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs">{empresa.sector_nombre}</span>} />
+                                <InfoRow label="Sitio Web" value={
+                                    empresa.sitio_web ? (
+                                        <a href={empresa.sitio_web} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:underline truncate block max-w-[150px]">
+                                            {empresa.sitio_web.replace('https://', '').replace('http://', '')}
+                                        </a>
+                                    ) : null
+                                } />
+                                <div className="py-6">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Descripción</label>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                        {empresa.descripcion || 'Sin descripción registrada.'}
+                                    </p>
+                                </div>
+                            </>
+                        )
                     ) : null}
                 </div>
+                {editing && (
+                    <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+                        <button onClick={cancelEditing} className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                            Cancelar
+                        </button>
+                        <button onClick={saveEditing} disabled={savingEdit || !editForm.nombre} className="px-5 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 disabled:opacity-50 transition-all">
+                            {savingEdit ? 'Guardando…' : 'Guardar'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -227,6 +376,65 @@ const CompanyDetail: React.FC = () => {
             </div>
         </div>
       </div>
+      {/* ── Pipeline Modal ──────────────────────────────────────── */}
+      {pipelineOpen && (
+        <div
+          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => { setPipelineOpen(false); setPipelineMsg(null); }}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-xl dark:bg-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="shrink-0 border-b border-gray-100 px-6 py-5 text-lg font-bold text-gray-900 dark:border-gray-700 dark:text-white">Actualizar Reportes</h2>
+            <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Gestión</label>
+                <input
+                  type="number"
+                  value={gestion}
+                  onChange={(e) => setGestion(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Trimestre</label>
+                <select
+                  value={trimestre}
+                  onChange={(e) => setTrimestre(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
+                >
+                  <option value={1}>Trimestre 1</option>
+                  <option value={2}>Trimestre 2</option>
+                  <option value={3}>Trimestre 3</option>
+                  <option value={4}>Trimestre 4</option>
+                </select>
+              </div>
+
+              {pipelineMsg && (
+                <div className={`rounded-xl p-3 text-xs font-bold ${pipelineMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                  {pipelineMsg.text}
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-700">
+              <button
+                onClick={() => { setPipelineOpen(false); setPipelineMsg(null); }}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEjecutarPipeline}
+                disabled={ejecutando}
+                className="px-5 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 disabled:opacity-50 transition-all"
+              >
+                {ejecutando ? 'Ejecutando…' : 'Ejecutar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

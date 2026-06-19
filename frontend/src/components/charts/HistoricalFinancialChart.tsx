@@ -10,10 +10,9 @@ import {
   Brush,
 } from 'recharts';
 import type { ReporteFinanciero } from '../../types/api';
-import { formatMoneyCompact, formatPercent } from '../../utils/financialMetrics';
+import { formatMoneyCompact } from '../../utils/financialMetrics';
 import TimeRangeSelector, { filterByRange } from '../common/TimeRangeSelector';
 import type { RangeKey } from '../common/TimeRangeSelector';
-import CustomTooltip from './CustomTooltip';
 
 interface HistoricalFinancialChartProps {
   reports: ReporteFinanciero[];
@@ -29,19 +28,15 @@ interface InternalPoint {
   total_patrimonio: number | null;
   activo_corriente: number | null;
   pasivo_corriente: number | null;
-  ingresos_totales: number | null;
-  utilidad_neta: number | null;
   liquidez_corriente: number | null;
   endeudamiento: number | null;
-  roa: number | null;
-  roe: number | null;
 }
 
 interface SeriesMeta {
   key: keyof InternalPoint;
   label: string;
   color: string;
-  group: 'balance' | 'results' | 'indicators';
+  group: 'balance' | 'indicators';
 }
 
 const ALL_SERIES: SeriesMeta[] = [
@@ -50,12 +45,8 @@ const ALL_SERIES: SeriesMeta[] = [
   { key: 'total_patrimonio', label: 'Patrimonio Neto', color: '#10b981', group: 'balance' },
   { key: 'activo_corriente', label: 'Activo Corriente', color: '#06b6d4', group: 'balance' },
   { key: 'pasivo_corriente', label: 'Pasivo Corriente', color: '#f97316', group: 'balance' },
-  { key: 'ingresos_totales', label: 'Ingresos Totales', color: '#22c55e', group: 'results' },
-  { key: 'utilidad_neta', label: 'Utilidad Neta', color: '#8b5cf6', group: 'results' },
   { key: 'liquidez_corriente', label: 'Liquidez', color: '#f59e0b', group: 'indicators' },
   { key: 'endeudamiento', label: 'Endeudamiento', color: '#e11d48', group: 'indicators' },
-  { key: 'roa', label: 'ROA', color: '#6366f1', group: 'indicators' },
-  { key: 'roe', label: 'ROE', color: '#ec4899', group: 'indicators' },
 ];
 
 function buildPoints(reports: ReporteFinanciero[]): InternalPoint[] {
@@ -80,12 +71,8 @@ function buildPoints(reports: ReporteFinanciero[]): InternalPoint[] {
       total_patrimonio: Number(d.total_patrimonio ?? 0) || null,
       activo_corriente: ac || null,
       pasivo_corriente: pc || null,
-      ingresos_totales: Number(d.ingresos_totales ?? null) || null,
-      utilidad_neta: Number(d.utilidad_neta ?? null) || null,
       liquidez_corriente: pc > 0 ? ac / pc : null,
       endeudamiento: activo > 0 ? pasivo / activo : null,
-      roa: Number(d.roa ?? null) || null,
-      roe: Number(d.roe ?? null) || null,
     };
   });
 }

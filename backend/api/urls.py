@@ -5,6 +5,7 @@ from api.views.accounts import UsuarioViewSet
 from api.views.analytics import IndicadorViewSet, SimulacionViewSet, RecomendacionViewSet
 from api.views.biometrics import VerifyIdentityView, LivenessDetectionView
 from api.views.chat import ChatView
+from api.views.dashboard import DashboardView
 from apps.accounts.views import GoogleLogin, UserMeView
 
 router = DefaultRouter()
@@ -30,4 +31,7 @@ urlpatterns = [
 
     # Chat — Asistente financiero con Gemini
     path('chat/', ChatView.as_view(), name='chat'),
+
+    # Dashboard — Datos agregados para la vista principal
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
 ]

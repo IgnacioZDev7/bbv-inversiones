@@ -208,7 +208,7 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-gray-950/60 backdrop-blur-sm p-4">
       <div
         className={`relative overflow-hidden rounded-3xl border border-gray-200/50 bg-white shadow-2xl animate-fade-in dark:border-gray-700/50 dark:bg-gray-900 ${
           step === 2 ? 'w-full max-w-4xl' : 'w-full max-w-xl'
