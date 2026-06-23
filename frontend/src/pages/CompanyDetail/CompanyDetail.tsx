@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
-import { getEmpresaById, getReportesByEmpresa, getAllEmpresas } from '../../services/apiServices';
+import { getEmpresaById, getAllReportes, getAllEmpresas } from '../../services/apiServices';
 import type { Empresa, ReporteFinanciero } from '../../types/api';
 import { toFinancialPoint, formatMoneyCompact, formatPercent, calculateFinancialHealthScore } from '../../utils/financialMetrics';
 import ErrorState from '../../components/common/ErrorState';
@@ -16,6 +16,7 @@ import ActivoVsPasivo from '../../components/charts/ActivoVsPasivo';
 import FinancialRatiosChart from '../../components/charts/FinancialRatiosChart';
 import Sparkline from '../../components/common/Sparkline';
 import CompanyHeroCard from '../../components/financials/CompanyHeroCard';
+import ReportHistoryTable from '../../components/financials/ReportHistoryTable';
 
 interface Metric {
   activos: number;
@@ -88,12 +89,12 @@ export default function CompanyDetail() {
     setError(null);
     Promise.all([
       getEmpresaById(empresaId),
-      getReportesByEmpresa(empresaId, { page_size: 50, estado_procesamiento: 'PROCESADO' }),
+      getAllReportes({ empresa: empresaId, estado_procesamiento: 'PROCESADO' }),
       getAllEmpresas(),
     ])
-      .then(([emp, reportData, compData]) => {
+      .then(([emp, reportList, compData]) => {
         setEmpresa(emp);
-        setReports(reportData.results);
+        setReports(reportList);
         setCompanies(compData);
       })
       .catch(() => setError('Error al conectar con la terminal financiera.'))
@@ -249,6 +250,14 @@ export default function CompanyDetail() {
                 <HistoricalFinancialChart reports={reports} companyName={empresa?.nombre} />
               </ErrorBoundary>
             </div>
+
+            {/* Historial de Reportes / Documentos */}
+            <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.02]">
+              <h3 className="mb-4 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                Historial de Reportes
+              </h3>
+              <ReportHistoryTable reports={reports} />
+            </section>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <ErrorBoundary componentName="ComposicionFinanciera">

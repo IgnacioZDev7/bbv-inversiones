@@ -2,6 +2,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import status
 from apps.accounts.models import Usuario
 from django.contrib.auth.models import Group
@@ -11,11 +12,32 @@ from core.permissions import IsAdministrador
 class UsuarioViewSet(ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
-    
+
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy", "cambiar_grupo"]:
             return [IsAuthenticated(), IsAdministrador()]
         return [IsAuthenticated()]
+
+    def _block_self_deactivation(self, request, instance):
+        """Un administrador no puede desactivar su propia cuenta."""
+        if instance.pk == request.user.pk:
+            activo = request.data.get('activo')
+            if activo is not None and not activo:
+                raise PermissionDenied("No puedes desactivar tu propia cuenta.")
+
+    def update(self, request, *args, **kwargs):
+        self._block_self_deactivation(request, self.get_object())
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._block_self_deactivation(request, self.get_object())
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.pk == request.user.pk:
+            raise PermissionDenied("No puedes eliminar tu propia cuenta.")
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=['get', 'patch'], url_path='me')
     def me(self, request):
@@ -52,8 +74,15 @@ class UsuarioViewSet(ModelViewSet):
         Se espera 'nombre_grupo' en el body.
         """
         usuario = self.get_object()
+
+        if usuario.pk == request.user.pk:
+            return Response(
+                {"error": "No puedes cambiar tu propio rol."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         nombre_grupo = request.data.get('nombre_grupo')
-        
+
         if not nombre_grupo:
             return Response(
                 {"error": "Debe proporcionar 'nombre_grupo'"},

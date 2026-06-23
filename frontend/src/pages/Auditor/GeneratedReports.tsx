@@ -2,13 +2,7 @@ import { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { getReportes } from '../../services/apiServices';
 import type { ReporteFinanciero, PaginatedResponse } from '../../types/api';
-
-const formatDate = (dateStr: string) =>
-  new Date(dateStr).toLocaleDateString('es-BO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+import { formatFechaInforme } from '../../utils/financialMetrics';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const styles: Record<string, string> = {
@@ -133,17 +127,21 @@ export default function GeneratedReports() {
                       {r.gestion}
                       {r.trimestre ? <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-700">T{r.trimestre}</span> : ''}
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-500">{formatDate(r.updated_at)}</td>
+                    <td className="px-6 py-4 text-xs text-gray-500">{formatFechaInforme(r)}</td>
                     <td className="px-6 py-4"><StatusBadge status={r.estado_procesamiento} /></td>
                     <td className="px-6 py-4">
-                      <a
-                        href={r.url_pdf}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600"
-                      >
-                        Ver
-                      </a>
+                      {r.url_pdf ? (
+                        <a
+                          href={r.url_pdf}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-brand-600"
+                        >
+                          Ver
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))

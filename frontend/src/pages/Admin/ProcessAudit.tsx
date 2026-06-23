@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
+import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { getReportes, getEmpresas, updateReporte, deleteReporte, ejecutarPipeline } from '../../services/apiServices';
 import type { ReporteFinanciero, PaginatedResponse, Empresa } from '../../types/api';
 
@@ -31,13 +32,13 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 export default function ProcessAudit() {
+  const { notify, confirm } = useUIFeedback();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     empresa: '',
     gestion: '',
     estado_procesamiento: ''
   });
-  const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   // 1. Obtener empresas para el filtro
@@ -69,47 +70,53 @@ export default function ProcessAudit() {
     setPage(1);
   };
 
-  const showActionMsg = (msg: string) => {
-    setActionMsg(msg);
-    setTimeout(() => setActionMsg(null), 3000);
-  };
-
   const handleRetry = async (reporte: ReporteFinanciero) => {
     setActionLoading(reporte.id_reporte);
     try {
       await updateReporte(reporte.id_reporte, { estado_procesamiento: 'PENDIENTE' });
-      showActionMsg(`Reporte #${reporte.id_reporte} marcado como pendiente para reintentar.`);
+      notify(`Reporte #${reporte.id_reporte} marcado como pendiente para reintentar.`, 'success');
       refetch();
     } catch {
-      showActionMsg('Error al reintentar el reporte.');
+      notify('Error al reintentar el reporte.', 'error');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleReprocess = async (reporte: ReporteFinanciero) => {
-    if (!window.confirm(`¿Reprocesar reporte de ${reporte.empresa_nombre} (${reporte.gestion})?`)) return;
+    const ok = await confirm({
+      title: 'Reprocesar reporte',
+      message: `¿Reprocesar reporte de ${reporte.empresa_nombre} (${reporte.gestion})?`,
+      confirmText: 'Reprocesar',
+    });
+    if (!ok) return;
     setActionLoading(reporte.id_reporte);
     try {
       await ejecutarPipeline(reporte.empresa, reporte.gestion, reporte.trimestre || 1);
-      showActionMsg(`Pipeline ejecutado para ${reporte.empresa_nombre} (${reporte.gestion}).`);
+      notify(`Pipeline ejecutado para ${reporte.empresa_nombre} (${reporte.gestion}).`, 'success');
       refetch();
     } catch {
-      showActionMsg('Error al ejecutar el pipeline.');
+      notify('Error al ejecutar el pipeline.', 'error');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDelete = async (reporte: ReporteFinanciero) => {
-    if (!window.confirm(`¿Eliminar reporte #${reporte.id_reporte} de ${reporte.empresa_nombre}?`)) return;
+    const ok = await confirm({
+      title: 'Eliminar reporte',
+      message: `¿Eliminar reporte #${reporte.id_reporte} de ${reporte.empresa_nombre}?`,
+      confirmText: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setActionLoading(reporte.id_reporte);
     try {
       await deleteReporte(reporte.id_reporte);
-      showActionMsg(`Reporte #${reporte.id_reporte} eliminado.`);
+      notify(`Reporte #${reporte.id_reporte} eliminado.`, 'success');
       refetch();
     } catch {
-      showActionMsg('Error al eliminar el reporte.');
+      notify('Error al eliminar el reporte.', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -181,13 +188,6 @@ export default function ProcessAudit() {
         </div>
       </div>
 
-      {/* Mensaje de Acción */}
-      {actionMsg && (
-        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400">
-          {actionMsg}
-        </div>
-      )}
-
       {/* Tabla de Resultados */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -236,14 +236,18 @@ export default function ProcessAudit() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <a 
-                          href={reporte.url_pdf} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-brand-500 hover:text-brand-600 text-xs font-bold underline"
-                        >
-                          Ver PDF
-                        </a>
+                        {reporte.url_pdf ? (
+                          <a
+                            href={reporte.url_pdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand-500 hover:text-brand-600 text-xs font-bold underline"
+                          >
+                            Ver PDF
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                         {reporte.estado_procesamiento === 'ERROR' && (
                           <button
                             onClick={() => handleRetry(reporte)}

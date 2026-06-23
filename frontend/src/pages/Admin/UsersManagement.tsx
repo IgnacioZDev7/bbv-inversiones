@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
+import { useAuth } from '../../context/AuthContext';
 import { getUsuarios, createUsuario, updateUsuario, deleteUsuario, cambiarGrupoUsuario } from '../../services/apiServices';
 import type { Usuario, PaginatedResponse } from '../../types/api';
 import { StaggerRow, StaggerItem } from '../../components/common/Stagger';
@@ -25,14 +26,22 @@ const GROUP_OPTIONS = ['Administrador', 'Analista', 'Auditor', 'Inversionista'];
 interface UserModalProps {
   mode: 'create' | 'edit';
   usuario: Usuario | null;
+  isSelf: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
+function UserModal({ mode, usuario, isSelf, onClose, onSaved }: UserModalProps) {
+  const { notify } = useUIFeedback();
   const [username, setUsername] = useState(usuario?.username ?? '');
   const [email, setEmail] = useState(usuario?.email ?? '');
   const [nombre, setNombre] = useState(usuario?.nombre ?? '');
+  const [apellidoPaterno, setApellidoPaterno] = useState(usuario?.apellido_paterno ?? '');
+  const [apellidoMaterno, setApellidoMaterno] = useState(usuario?.apellido_materno ?? '');
+  const [ci, setCi] = useState(usuario?.ci ?? '');
+  const [celular, setCelular] = useState(usuario?.celular ?? '');
+  const [fechaNacimiento, setFechaNacimiento] = useState(usuario?.fecha_nacimiento ?? '');
+  const [activo, setActivo] = useState(usuario?.activo ?? true);
   const [password, setPassword] = useState('');
   const [grupo, setGrupo] = useState(usuario?.group_names?.[0] ?? GROUP_OPTIONS[0]);
   const [saving, setSaving] = useState(false);
@@ -54,6 +63,11 @@ function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
           username,
           email,
           nombre: nombre || undefined,
+          apellido_paterno: apellidoPaterno || undefined,
+          apellido_materno: apellidoMaterno || undefined,
+          ci: ci || undefined,
+          celular: celular || undefined,
+          fecha_nacimiento: fechaNacimiento || undefined,
           password: password,
         } as Partial<Usuario> & { password?: string });
         await cambiarGrupoUsuario(created.id_usuario, grupo);
@@ -61,14 +75,21 @@ function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
         await updateUsuario(usuario.id_usuario, {
           email,
           nombre: nombre || undefined,
+          apellido_paterno: apellidoPaterno || undefined,
+          apellido_materno: apellidoMaterno || undefined,
+          ci: ci || undefined,
+          celular: celular || undefined,
+          fecha_nacimiento: fechaNacimiento || undefined,
+          activo,
         });
         const currentRole = usuario.group_names?.[0];
-        if (currentRole !== grupo) {
+        if (!isSelf && currentRole !== grupo) {
           await cambiarGrupoUsuario(usuario.id_usuario, grupo);
         }
       }
       onSaved();
       onClose();
+      notify(mode === 'create' ? 'Usuario creado correctamente.' : 'Usuario actualizado correctamente.', 'success');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al guardar el usuario.';
       setError(msg);
@@ -102,6 +123,35 @@ function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
             <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)}
               className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Apellido Paterno</label>
+              <input type="text" value={apellidoPaterno} onChange={(e) => setApellidoPaterno(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Apellido Materno</label>
+              <input type="text" value={apellidoMaterno} onChange={(e) => setApellidoMaterno(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Cédula de Identidad</label>
+              <input type="text" value={ci} onChange={(e) => setCi(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Celular</label>
+              <input type="text" value={celular} onChange={(e) => setCelular(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Fecha de Nacimiento</label>
+            <input type="date" value={fechaNacimiento ?? ''} onChange={(e) => setFechaNacimiento(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none transition-all focus:ring-2 focus:ring-brand-500/20" />
+          </div>
           {mode === 'create' && (
             <div>
               <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Contraseña *</label>
@@ -111,11 +161,25 @@ function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
           )}
           <div>
             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Grupo / Rol</label>
-            <select value={grupo} onChange={(e) => setGrupo(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none transition-all focus:ring-2 focus:ring-brand-500/20">
+            <select value={grupo} onChange={(e) => setGrupo(e.target.value)} disabled={isSelf}
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white outline-none transition-all focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
               {GROUP_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
+            {isSelf && <p className="mt-1 text-[11px] text-gray-400">No puedes cambiar tu propio rol.</p>}
           </div>
+          {mode === 'edit' && (
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={activo}
+                disabled={isSelf}
+                onChange={(e) => setActivo(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20 disabled:opacity-50"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Usuario activo</span>
+              {isSelf && <span className="text-[11px] text-gray-400">(no puedes desactivar tu propia cuenta)</span>}
+            </label>
+          )}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
           <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-700">
@@ -134,7 +198,7 @@ function UserModal({ mode, usuario, onClose, onSaved }: UserModalProps) {
   );
 }
 
-function UserCard({ u, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; onToggle: () => void; onEdit: () => void; onDelete: () => void; onRefetch: () => void; }) {
+function UserCard({ u, isSelf, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; isSelf: boolean; onToggle: () => void; onEdit: () => void; onDelete: () => void; onRefetch: () => void; }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -142,11 +206,13 @@ function UserCard({ u, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; on
           {(u.nombre || u.username || '?').slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{u.nombre || u.username}</p>
+          <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{u.nombre || u.username}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-brand-500">(Tú)</span>}</p>
           <p className="truncate text-xs text-gray-500">@{u.username} · {u.email}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <select
               value={u.group_names?.[0] || ''}
+              disabled={isSelf}
+              title={isSelf ? 'No puedes cambiar tu propio rol' : undefined}
               onChange={async (e) => {
                 const newRole = e.target.value;
                 if (newRole && newRole !== u.group_names?.[0]) {
@@ -154,7 +220,7 @@ function UserCard({ u, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; on
                   onRefetch();
                 }
               }}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300 outline-none"
+              className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {GROUP_OPTIONS.map((g) => (
                 <option key={g} value={g}>{g}</option>
@@ -175,26 +241,30 @@ function UserCard({ u, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; on
               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </button>
-        <button
-          onClick={onDelete}
-          className="rounded-xl p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
-          title="Eliminar"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-        <button
-          onClick={onToggle}
-          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-            u.activo
-              ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
-              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
-          }`}
-        >
-          {u.activo ? 'Desactivar' : 'Activar'}
-        </button>
+        {!isSelf && (
+          <>
+            <button
+              onClick={onDelete}
+              className="rounded-xl p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
+              title="Eliminar"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+            <button
+              onClick={onToggle}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                u.activo
+                  ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
+                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
+              }`}
+            >
+              {u.activo ? 'Desactivar' : 'Activar'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -202,6 +272,7 @@ function UserCard({ u, onToggle, onEdit, onDelete, onRefetch }: { u: Usuario; on
 
 const UsersManagement = () => {
   const { notify, confirm } = useUIFeedback();
+  const { user: currentUser } = useAuth();
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -240,17 +311,27 @@ const UsersManagement = () => {
     return result;
   }, [usuarios, search, groupFilter]);
 
+  const isSelf = (usuario: Usuario) => String(usuario.id_usuario) === currentUser?.id;
+
   const handleToggleActive = async (usuario: Usuario) => {
+    if (isSelf(usuario)) {
+      notify('No puedes desactivar tu propia cuenta.', 'error');
+      return;
+    }
     try {
       const { default: apiClient } = await import('../../api/client');
       await apiClient.patch(`/usuarios/${usuario.id_usuario}/`, { activo: !usuario.activo });
       refetch();
-    } catch {
-      notify('Error al cambiar el estado del usuario.', 'error');
+    } catch (err: any) {
+      notify(err?.response?.data?.detail || 'Error al cambiar el estado del usuario.', 'error');
     }
   };
 
   const handleDelete = async (usuario: Usuario) => {
+    if (isSelf(usuario)) {
+      notify('No puedes eliminar tu propia cuenta.', 'error');
+      return;
+    }
     const ok = await confirm({
       title: 'Eliminar usuario',
       message: `¿Eliminar usuario "${usuario.nombre || usuario.username}"? Esta acción no se puede deshacer.`,
@@ -262,8 +343,8 @@ const UsersManagement = () => {
       await deleteUsuario(usuario.id_usuario);
       refetch();
       notify('Usuario eliminado correctamente.', 'success');
-    } catch {
-      notify('Error al eliminar el usuario.', 'error');
+    } catch (err: any) {
+      notify(err?.response?.data?.detail || 'Error al eliminar el usuario.', 'error');
     }
   };
 
@@ -352,7 +433,10 @@ const UsersManagement = () => {
                         {(u.nombre || u.username || '?').slice(0, 1).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{u.nombre || u.username}</p>
+                        <p className="truncate text-sm font-bold text-gray-900 dark:text-white">
+                          {u.nombre || u.username}
+                          {isSelf(u) && <span className="ml-1.5 text-[10px] font-bold text-brand-500">(Tú)</span>}
+                        </p>
                         <p className="truncate text-xs text-gray-400">@{u.username}</p>
                       </div>
                     </div>
@@ -361,6 +445,8 @@ const UsersManagement = () => {
                   <td className="px-4 py-3">
                     <select
                       value={u.group_names?.[0] || ''}
+                      disabled={isSelf(u)}
+                      title={isSelf(u) ? 'No puedes cambiar tu propio rol' : undefined}
                       onChange={async (e) => {
                         const newRole = e.target.value;
                         if (newRole && newRole !== u.group_names?.[0]) {
@@ -368,7 +454,7 @@ const UsersManagement = () => {
                           refetch();
                         }
                       }}
-                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 outline-none transition-all focus:ring-2 focus:ring-brand-500/20"
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 outline-none transition-all focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {GROUP_OPTIONS.map((g) => (
                         <option key={g} value={g}>{g}</option>
@@ -391,26 +477,30 @@ const UsersManagement = () => {
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
-                      <button
-                        onClick={() => handleDelete(u)}
-                        className="rounded-xl p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
-                        title="Eliminar"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(u)}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                          u.activo
-                            ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
-                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
-                        }`}
-                      >
-                        {u.activo ? 'Desactivar' : 'Activar'}
-                      </button>
+                      {!isSelf(u) && (
+                        <>
+                          <button
+                            onClick={() => handleDelete(u)}
+                            className="rounded-xl p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
+                            title="Eliminar"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                              u.activo
+                                ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
+                                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
+                            }`}
+                          >
+                            {u.activo ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </StaggerRow>
@@ -447,7 +537,7 @@ const UsersManagement = () => {
         ) : (
           filtered.map((u, idx) => (
             <StaggerItem key={u.id_usuario} index={idx}>
-              <UserCard u={u} onToggle={() => handleToggleActive(u)} onEdit={() => { setEditingUser(u); setShowModal(true); }} onDelete={() => handleDelete(u)} onRefetch={refetch} />
+              <UserCard u={u} isSelf={isSelf(u)} onToggle={() => handleToggleActive(u)} onEdit={() => { setEditingUser(u); setShowModal(true); }} onDelete={() => handleDelete(u)} onRefetch={refetch} />
             </StaggerItem>
           ))
         )}
@@ -473,6 +563,7 @@ const UsersManagement = () => {
         <UserModal
           mode={editingUser ? 'edit' : 'create'}
           usuario={editingUser}
+          isSelf={editingUser ? isSelf(editingUser) : false}
           onClose={() => { setShowModal(false); setEditingUser(null); }}
           onSaved={refetch}
         />

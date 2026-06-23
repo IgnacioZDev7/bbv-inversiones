@@ -19,6 +19,10 @@ solo se debe modificar el CODIGO DE EMPRESA Y EL INTERVALO DE AÑO INICIO Y AÑO
 comandos de ejemplo ya ejecutados:
 
 python manage.py cargar_empresa CMI --desde 2022 --hasta 2026
+
+
+python manage.py cargar_empresa SOF --desde 2013 --hasta 2014
+
 python manage.py cargar_empresa NXS --desde 2022 --hasta 2026
 python manage.py cargar_empresa DTC --desde 2024 --hasta 2026
 python manage.py cargar_empresa DMT --desde 2022 --hasta 2026

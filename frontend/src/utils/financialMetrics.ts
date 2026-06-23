@@ -1,5 +1,34 @@
 import type { ReporteFinanciero } from '../types/api';
 
+const PERIODO_MES_FIN: Record<number, string> = { 1: '03', 2: '06', 3: '09', 4: '12' };
+const PERIODO_DIA_FIN: Record<number, string> = { 1: '31', 2: '30', 3: '30', 4: '31' };
+
+/**
+ * Formatea una fecha "YYYY-MM-DD" como "DD/MM/YYYY" sin pasar por el
+ * constructor `Date` (que interpreta strings ISO como UTC y puede mostrar
+ * un día anterior al real en timezones negativos, ej. Bolivia UTC-4).
+ */
+function formatYMD(year: number | string, month: string, day: string): string {
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Fecha real del cierre del periodo contable de un reporte (la que figura en el PDF),
+ * NO la fecha en que nuestro sistema procesó/actualizó el registro.
+ */
+export function formatFechaInforme(report: ReporteFinanciero): string {
+  if (report.fecha_publicacion) {
+    const [year, month, day] = report.fecha_publicacion.split('-');
+    return formatYMD(year, month, day);
+  }
+  if (report.trimestre) {
+    const mes = PERIODO_MES_FIN[report.trimestre];
+    const dia = PERIODO_DIA_FIN[report.trimestre];
+    return formatYMD(report.gestion, mes, dia);
+  }
+  return formatYMD(report.gestion, '12', '31');
+}
+
 export type FinancialStatus = 'excelente' | 'saludable' | 'observacion' | 'riesgo';
 
 export interface FinancialPoint {

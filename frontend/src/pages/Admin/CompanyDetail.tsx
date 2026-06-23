@@ -2,8 +2,10 @@ import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { useApi } from '../../hooks/useApi';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
-import { getEmpresaById, getReportesByEmpresa, getEmpresas, updateEmpresa, deleteEmpresa, ejecutarPipeline } from '../../services/apiServices';
+import { getEmpresaById, getReportesByEmpresa, getEmpresas, updateEmpresa, deleteEmpresa } from '../../services/apiServices';
 import type { Empresa, ReporteFinanciero, PaginatedResponse } from '../../types/api';
+import { formatFechaInforme } from '../../utils/financialMetrics';
+import PipelineRangeRunner from '../../components/financials/PipelineRangeRunner';
 
 // ── Estado badge ────────────────────────────────────────────────
 const EstadoBadge: React.FC<{ estado: string }> = ({ estado }) => {
@@ -43,10 +45,6 @@ const CompanyDetail: React.FC = () => {
 
   // Pipeline
   const [pipelineOpen, setPipelineOpen] = useState(false);
-  const [gestion, setGestion] = useState(new Date().getFullYear());
-  const [trimestre, setTrimestre] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
-  const [ejecutando, setEjecutando] = useState(false);
-  const [pipelineMsg, setPipelineMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 1. Datos de la empresa
   const { data: empresa, isLoading: empLoading, error: empError, refetch: refetchEmpresa } = useApi<Empresa>(
@@ -60,7 +58,7 @@ const CompanyDetail: React.FC = () => {
     [empresaId, page]
   );
 
-  const { data: reportesData, isLoading: repLoading } = useApi<PaginatedResponse<ReporteFinanciero>>(
+  const { data: reportesData, isLoading: repLoading, refetch: refetchReportes } = useApi<PaginatedResponse<ReporteFinanciero>>(
     fetchReportes,
     [fetchReportes]
   );
@@ -134,20 +132,6 @@ const CompanyDetail: React.FC = () => {
     }
   };
 
-  const handleEjecutarPipeline = async () => {
-    setEjecutando(true);
-    setPipelineMsg(null);
-    try {
-      await ejecutarPipeline(empresaId, gestion, trimestre);
-      setPipelineMsg({ type: 'success', text: 'Pipeline ejecutado correctamente.' });
-      setTimeout(() => { setPipelineOpen(false); setPipelineMsg(null); }, 2000);
-    } catch {
-      setPipelineMsg({ type: 'error', text: 'Error al ejecutar el pipeline.' });
-    } finally {
-      setEjecutando(false);
-    }
-  };
-
   if (empError) {
     return (
       <div className="p-12 text-center">
@@ -164,28 +148,30 @@ const CompanyDetail: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       {/* Header & Navigation */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
+      <div className="space-y-4">
+        <div className="min-w-0">
             <nav className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
                 <Link to="/admin/companies" className="hover:text-brand-500 transition">Directorio</Link>
                 <span>/</span>
                 <span className="text-brand-500">Detalle</span>
             </nav>
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                {empLoading ? <div className="h-9 w-64 bg-gray-100 dark:bg-gray-700 animate-pulse rounded-lg" /> : empresa?.nombre}
+            <div className="flex flex-wrap items-center gap-3">
+                <h1 className="break-words text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+                    {empLoading ? <div className="h-9 w-64 bg-gray-100 dark:bg-gray-700 animate-pulse rounded-lg" /> : empresa?.nombre}
+                </h1>
                 {empresa && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md border ${empresa.activa ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5' : 'border-gray-500/20 text-gray-500 bg-gray-500/5'}`}>
+                    <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-md border ${empresa.activa ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5' : 'border-gray-500/20 text-gray-500 bg-gray-500/5'}`}>
                         {empresa.activa ? 'ACTIVA' : 'INACTIVA'}
                     </span>
                 )}
-            </h1>
+            </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
                 <label className="absolute -top-2 left-3 px-1 bg-white dark:bg-gray-900 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Cambiar Empresa</label>
-                <select 
-                    value={id} 
+                <select
+                    value={id}
                     onChange={(e) => handleCompanyChange(e.target.value)}
                     className="appearance-none rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pl-4 pr-10 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all cursor-pointer"
                 >
@@ -201,19 +187,19 @@ const CompanyDetail: React.FC = () => {
                 <>
                     <button
                         onClick={() => setPipelineOpen(true)}
-                        className="px-6 py-3 bg-gray-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-gray-700/20 hover:bg-gray-800 active:scale-95 transition-all dark:bg-gray-600 dark:hover:bg-gray-500"
+                        className="shrink-0 px-5 py-3 bg-gray-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-gray-700/20 hover:bg-gray-800 active:scale-95 transition-all dark:bg-gray-600 dark:hover:bg-gray-500"
                     >
                         Actualizar Reportes
                     </button>
                     <button
                         onClick={() => navigate(`/analyst/indicators?empresa=${empresa.id_empresa}`)}
-                        className="px-6 py-3 bg-brand-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-500/20 hover:bg-brand-600 active:scale-95 transition-all"
+                        className="shrink-0 px-5 py-3 bg-brand-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-500/20 hover:bg-brand-600 active:scale-95 transition-all"
                     >
                         Analizar Gráficos
                     </button>
-                    <button 
+                    <button
                         onClick={handleDeleteCompany}
-                        className="px-6 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 active:scale-95 transition-all"
+                        className="shrink-0 px-5 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 active:scale-95 transition-all"
                     >
                         Eliminar Empresa
                     </button>
@@ -324,7 +310,7 @@ const CompanyDetail: React.FC = () => {
                                 <th className="px-8 py-4">Gestión</th>
                                 <th className="px-8 py-4 text-center">Periodo</th>
                                 <th className="px-8 py-4">Estado</th>
-                                <th className="px-8 py-4">Actualizado</th>
+                                <th className="px-8 py-4">Fecha del Informe</th>
                                 <th className="px-8 py-4 text-right">Archivo</th>
                             </tr>
                         </thead>
@@ -346,7 +332,7 @@ const CompanyDetail: React.FC = () => {
                                         </td>
                                         <td className="px-8 py-5"><EstadoBadge estado={r.estado_procesamiento} /></td>
                                         <td className="px-8 py-5 text-xs text-gray-500">
-                                            {r.updated_at ? new Date(r.updated_at).toLocaleDateString('es-BO') : '—'}
+                                            {formatFechaInforme(r)}
                                         </td>
                                         <td className="px-8 py-5 text-right">
                                             {r.url_pdf ? (
@@ -380,56 +366,25 @@ const CompanyDetail: React.FC = () => {
       {pipelineOpen && (
         <div
           className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => { setPipelineOpen(false); setPipelineMsg(null); }}
+          onClick={() => setPipelineOpen(false)}
         >
           <div
             className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-xl dark:bg-gray-800"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="shrink-0 border-b border-gray-100 px-6 py-5 text-lg font-bold text-gray-900 dark:border-gray-700 dark:text-white">Actualizar Reportes</h2>
-            <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Gestión</label>
-                <input
-                  type="number"
-                  value={gestion}
-                  onChange={(e) => setGestion(Number(e.target.value))}
-                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Trimestre</label>
-                <select
-                  value={trimestre}
-                  onChange={(e) => setTrimestre(Number(e.target.value))}
-                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
-                >
-                  <option value={1}>Trimestre 1</option>
-                  <option value={2}>Trimestre 2</option>
-                  <option value={3}>Trimestre 3</option>
-                  <option value={4}>Trimestre 4</option>
-                </select>
-              </div>
-
-              {pipelineMsg && (
-                <div className={`rounded-xl p-3 text-xs font-bold ${pipelineMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                  {pipelineMsg.text}
-                </div>
-              )}
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <PipelineRangeRunner
+                empresaId={empresaId}
+                onDone={() => { refetchReportes(); refetchEmpresa(); }}
+              />
             </div>
-            <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4 dark:border-gray-700">
+            <div className="flex shrink-0 justify-end border-t border-gray-100 px-6 py-4 dark:border-gray-700">
               <button
-                onClick={() => { setPipelineOpen(false); setPipelineMsg(null); }}
+                onClick={() => setPipelineOpen(false)}
                 className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
               >
-                Cancelar
-              </button>
-              <button
-                onClick={handleEjecutarPipeline}
-                disabled={ejecutando}
-                className="px-5 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 disabled:opacity-50 transition-all"
-              >
-                {ejecutando ? 'Ejecutando…' : 'Ejecutar'}
+                Cerrar
               </button>
             </div>
           </div>

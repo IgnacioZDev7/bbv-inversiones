@@ -2,6 +2,25 @@ import traceback
 import pdfplumber
 import re
 
+
+def _parse_numero(raw: str) -> float:
+    """Convierte un número tal como aparece en los PDF de la BBV a float.
+
+    Los reportes usan coma como separador de miles y punto como separador
+    decimal (ej. "1,732,228.26"; antes de 2024 sin decimales: "1,634,135").
+    Quitar ambos separadores indiscriminadamente (como hacía la versión
+    anterior) infla el valor ~100x cuando el número trae decimales.
+    """
+    raw = raw.strip()
+    if not raw:
+        return 0.0
+    sin_miles = raw.replace(',', '')
+    try:
+        return float(sin_miles)
+    except ValueError:
+        return 0.0
+
+
 class PDFParser:
     def extraer_fecha(self, text):
         match = re.search(r'al\s+(\d{1,2})\s+de\s+([^\d]+)\s+de\s+(\d{4})', text, re.IGNORECASE)
@@ -34,11 +53,7 @@ class PDFParser:
                 numeros = re.findall(r'[\d\.,]+', line)
                 if numeros:
                     # Parsear el último número ignorando si hay texto sucio alrededor
-                    raw_val = numeros[-1].replace(',', '').replace('.', '')
-                    try:
-                        valor = float(raw_val)
-                    except Exception:
-                        continue
+                    valor = _parse_numero(numeros[-1])
                         
                     if 'TOTAL PASIVO Y PATRIMONIO' in line_upper:
                         continue

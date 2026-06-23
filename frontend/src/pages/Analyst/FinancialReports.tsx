@@ -2,16 +2,7 @@ import { useState, useCallback } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { getReportes, getAllEmpresas } from '../../services/apiServices';
 import type { ReporteFinanciero, PaginatedResponse, Empresa } from '../../types/api';
-
-const formatDateTime = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('es-BO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
+import { formatFechaInforme } from '../../utils/financialMetrics';
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const styles: Record<string, string> = {
@@ -29,7 +20,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 const SkeletonRow: React.FC = () => (
   <tr>
-    {[1, 2, 3, 4, 5].map((i) => (
+    {[1, 2, 3, 4, 5, 6].map((i) => (
       <td key={i} className="px-6 py-4">
         <div className="h-4 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
       </td>
@@ -154,7 +145,8 @@ const FinancialReports: React.FC = () => {
                 <th className="px-6 py-4">Gesti&oacute;n</th>
                 <th className="px-6 py-4">Trimestre</th>
                 <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4">Actualizado</th>
+                <th className="px-6 py-4">Fecha del Informe</th>
+                <th className="px-6 py-4 text-right">Documento</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -163,7 +155,7 @@ const FinancialReports: React.FC = () => {
                 : reportes.length === 0
                 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400 italic">
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400 italic">
                       No se encontraron reportes que coincidan con los filtros.
                     </td>
                   </tr>
@@ -183,7 +175,21 @@ const FinancialReports: React.FC = () => {
                       <StatusBadge status={r.estado_procesamiento} />
                     </td>
                     <td className="px-6 py-4 text-gray-500 text-xs">
-                      {formatDateTime(r.updated_at)}
+                      {formatFechaInforme(r)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {r.url_pdf ? (
+                        <a
+                          href={r.url_pdf}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-xl bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600 transition-all"
+                        >
+                          Ver PDF
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
