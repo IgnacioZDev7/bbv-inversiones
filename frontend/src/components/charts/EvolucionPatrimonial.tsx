@@ -120,7 +120,7 @@ export default function EvolucionPatrimonial({ data, companyName }: EvolucionPat
               iconType="line"
             />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="patrimonio"
               name="Patrimonio"
               stroke="#2563eb"

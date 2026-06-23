@@ -14,11 +14,12 @@ import type {
   EmpresaParams,
   ReporteParams,
   DashboardKPIs,
-  ChatMessage,
   ChatRequest,
   ChatResponse,
   BiometricVerifyResponse,
+  DocumentValidationResponse,
   LivenessCheckResponse,
+  PoseVerificationResponse,
   SimulationParams,
   SimulationResult,
 } from '../types/api';
@@ -179,11 +180,6 @@ export const sendChatMessage = (data: ChatRequest) =>
     .post<ChatResponse>('/chat/', data)
     .then((r) => r.data);
 
-export const getChatHistory = (conversationId: string) =>
-  apiClient
-    .get<ChatMessage[]>(`/chat/${conversationId}/`)
-    .then((r) => r.data);
-
 // ──────────────────────────────────────────────────────────────
 // PIPELINE
 // ──────────────────────────────────────────────────────────────
@@ -210,6 +206,11 @@ export interface CompleteProfilePayload {
 export const completarPerfil = (data: CompleteProfilePayload) =>
   apiClient
     .patch<Usuario>('/usuarios/me/completar_perfil/', data)
+    .then((r) => r.data);
+
+export const cambiarPassword = (password: string) =>
+  apiClient
+    .patch<Usuario>('/usuarios/me/', { password })
     .then((r) => r.data);
 
 // ──────────────────────────────────────────────────────────────
@@ -246,6 +247,28 @@ export const verifyBiometricIdentity = (carnetImage: File, selfieImage: File) =>
   formData.append('selfie_image', selfieImage);
   return apiClient
     .post<BiometricVerifyResponse>('/biometrics/verify/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+};
+
+export const validateDocument = (carnetImage: File) => {
+  const formData = new FormData();
+  formData.append('carnet_image', carnetImage);
+  return apiClient
+    .post<DocumentValidationResponse>('/biometrics/validate-document/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+};
+
+export const verifyPoses = (frontImage: File, leftImage: File, rightImage: File) => {
+  const formData = new FormData();
+  formData.append('image_front', frontImage);
+  formData.append('image_left', leftImage);
+  formData.append('image_right', rightImage);
+  return apiClient
+    .post<PoseVerificationResponse>('/biometrics/verify-poses/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     .then((r) => r.data);

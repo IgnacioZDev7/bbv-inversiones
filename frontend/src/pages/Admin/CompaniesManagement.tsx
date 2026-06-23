@@ -4,6 +4,8 @@ import { useApi } from '../../hooks/useApi';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { getEmpresas, getSectores, createEmpresa, updateEmpresa, deleteEmpresa } from '../../services/apiServices';
 import type { Empresa, PaginatedResponse, SectorEmpresa } from '../../types/api';
+import { StaggerRow } from '../../components/common/Stagger';
+import RippleButton from '../../components/common/RippleButton';
 
 // ── Badges de estado ────────────────────────────────────────────
 const StatusBadge: React.FC<{ activa: boolean }> = ({ activa }) => (
@@ -193,12 +195,12 @@ const CompaniesManagement: React.FC = () => {
             {isLoading ? 'Cargando registros…' : `${totalCount} entidad${totalCount !== 1 ? 'es' : ''} encontrada${totalCount !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
+        <RippleButton
           onClick={openCreateModal}
           className="shrink-0 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600 active:scale-95 transition-all"
         >
           + Crear Empresa
-        </button>
+        </RippleButton>
       </div>
 
       {/* Filtros */}
@@ -268,8 +270,9 @@ const CompaniesManagement: React.FC = () => {
                     </td>
                   </tr>
                 )
-                : empresas.map((emp) => (
-                  <tr
+                : empresas.map((emp, idx) => (
+                  <StaggerRow
+                    index={idx}
                     key={emp.id_empresa}
                     onClick={() => navigate(`/admin/companies/${emp.id_empresa}`)}
                     className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -316,7 +319,7 @@ const CompaniesManagement: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                  </tr>
+                  </StaggerRow>
                 ))}
             </tbody>
           </table>

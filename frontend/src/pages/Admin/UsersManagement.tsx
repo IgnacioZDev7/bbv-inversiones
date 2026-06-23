@@ -3,6 +3,7 @@ import { useApi } from '../../hooks/useApi';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
 import { getUsuarios, createUsuario, updateUsuario, deleteUsuario, cambiarGrupoUsuario } from '../../services/apiServices';
 import type { Usuario, PaginatedResponse } from '../../types/api';
+import { StaggerRow, StaggerItem } from '../../components/common/Stagger';
 
 function StatusBadge({ activo }: { activo: boolean }) {
   return (
@@ -343,8 +344,8 @@ const UsersManagement = () => {
                 </td>
               </tr>
             ) : (
-              filtered.map((u) => (
-                <tr key={u.id_usuario} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              filtered.map((u, idx) => (
+                <StaggerRow index={idx} key={u.id_usuario} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-bold text-gray-600 dark:bg-gray-900 dark:text-gray-300">
@@ -412,7 +413,7 @@ const UsersManagement = () => {
                       </button>
                     </div>
                   </td>
-                </tr>
+                </StaggerRow>
               ))
             )}
           </tbody>
@@ -444,8 +445,10 @@ const UsersManagement = () => {
         ) : filtered.length === 0 ? (
           <p className="py-12 text-center text-sm italic text-gray-400">No se encontraron usuarios.</p>
         ) : (
-          filtered.map((u) => (
-            <UserCard key={u.id_usuario} u={u} onToggle={() => handleToggleActive(u)} onEdit={() => { setEditingUser(u); setShowModal(true); }} onDelete={() => handleDelete(u)} onRefetch={refetch} />
+          filtered.map((u, idx) => (
+            <StaggerItem key={u.id_usuario} index={idx}>
+              <UserCard u={u} onToggle={() => handleToggleActive(u)} onEdit={() => { setEditingUser(u); setShowModal(true); }} onDelete={() => handleDelete(u)} onRefetch={refetch} />
+            </StaggerItem>
           ))
         )}
 

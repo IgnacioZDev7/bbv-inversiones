@@ -7,6 +7,10 @@ import type { Empresa } from '../../types/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartTooltip,
 } from 'recharts';
+import { ShootingStarIcon, GroupIcon, DocsIcon } from '../../icons';
+import SpotlightCard from '../../components/common/SpotlightCard';
+import GradientText from '../../components/common/GradientText';
+import { StaggerItem } from '../../components/common/Stagger';
 
 const WATCHLIST_STORAGE_KEY = 'bbv-investor-watchlist';
 
@@ -70,7 +74,9 @@ export default function InvestorDashboard() {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Inversionista</p>
-        <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Dashboard de inversión</h1>
+        <h1 className="mt-1 text-2xl font-bold">
+          <GradientText colors={['#10b981', '#34d399', '#10b981']}>Dashboard de inversión</GradientText>
+        </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400">
           Resumen del mercado y empresas en seguimiento. Selecciona una empresa para ver su análisis detallado.
         </p>
@@ -84,18 +90,27 @@ export default function InvestorDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">En seguimiento</p>
+          <SpotlightCard className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
+              <ShootingStarIcon className="size-6 text-amber-500" />
+            </div>
+            <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">En seguimiento</p>
             <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{watchlistCompanies.length}</p>
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Empresas con datos</p>
+          </SpotlightCard>
+          <SpotlightCard className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+              <GroupIcon className="size-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">Empresas con datos</p>
             <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{companiesWithReports.length}</p>
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reportes disponibles</p>
+          </SpotlightCard>
+          <SpotlightCard className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10">
+              <DocsIcon className="size-6 text-brand-500" />
+            </div>
+            <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">Reportes disponibles</p>
             <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{processedCount}</p>
-          </div>
+          </SpotlightCard>
         </div>
       )}
 
@@ -112,8 +127,8 @@ export default function InvestorDashboard() {
                 No tienes empresas en seguimiento. Explora empresas y agrégalas a tu watchlist.
               </div>
             ) : (
-              watchlistCompanies.map((c) => (
-                <div key={c.id_empresa} className="flex items-center justify-between px-5 py-3">
+              watchlistCompanies.map((c, idx) => (
+                <StaggerItem key={c.id_empresa} index={idx} className="flex items-center justify-between px-5 py-3">
                   <button
                     onClick={() => navigate(`/company/${c.id_empresa}`)}
                     className="text-left hover:text-brand-500 transition-colors"
@@ -127,7 +142,7 @@ export default function InvestorDashboard() {
                   >
                     Quitar
                   </button>
-                </div>
+                </StaggerItem>
               ))
             )}
           </div>

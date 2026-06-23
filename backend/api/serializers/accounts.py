@@ -73,7 +73,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class CompletarPerfilSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['ci', 'celular', 'apellido_paterno', 'apellido_materno']
+        fields = ['ci', 'celular', 'apellido_paterno', 'apellido_materno', 'nombre', 'fecha_nacimiento']
 
     def validate_ci(self, value):
         if not value:

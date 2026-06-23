@@ -182,3 +182,21 @@ export interface LivenessCheckDetail {
   yaw?: number;
   pitch?: number;
 }
+
+export interface PoseVerificationResponse {
+  poses_valid: boolean;
+  yaws: (number | null)[];
+  message: string;
+}
+
+export interface DocumentValidationResponse {
+  valid: boolean;
+  ci_match: boolean;
+  name_match: boolean;
+  message: string;
+  extracted: {
+    ci: string | null;
+    nombres: string | null;
+    apellidos: string | null;
+  };
+}

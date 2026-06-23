@@ -6,6 +6,8 @@ import type { DashboardData } from '../../services/apiServices';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, AreaChart, Area, Cell,
 } from 'recharts';
+import SpotlightCard from '../../components/common/SpotlightCard';
+import GradientText from '../../components/common/GradientText';
 
 const IconUsers = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,14 +98,19 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Consola de Operaciones</h1>
+        <h1 className="text-3xl font-black uppercase tracking-tight">
+          <GradientText>Consola de Operaciones</GradientText>
+        </h1>
         <p className="text-sm text-gray-500 font-medium mt-1">Métricas de rendimiento y gestión de infraestructura</p>
       </div>
 
       {/* ── KPIs ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {kpisList.map((k, idx) => (
-          <div key={idx} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm flex items-center justify-between">
+          <SpotlightCard
+            key={idx}
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm flex items-center justify-between"
+          >
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{k.title}</p>
               <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">
@@ -113,7 +120,7 @@ const AdminDashboard: React.FC = () => {
             <div className={`h-11 w-11 rounded-xl ${k.color} text-white flex items-center justify-center shadow-lg shadow-current/20`}>
               {k.icon}
             </div>
-          </div>
+          </SpotlightCard>
         ))}
       </div>
 

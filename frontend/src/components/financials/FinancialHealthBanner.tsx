@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useCallback } from 'react';
-import { calculateFinancialHealthScore, classifyHealthScore } from '../../utils/financialMetrics';
+import { calculateFinancialHealthScore, classifyHealthScore, getHealthScoreBreakdown } from '../../utils/financialMetrics';
+import SemiGauge from '../common/SemiGauge';
 
 type HealthState = 'excelente' | 'saludable' | 'observacion' | 'riesgo';
 
@@ -123,6 +124,13 @@ const stateIcons: Record<HealthState, typeof ShieldIcon> = {
   riesgo: AlertIcon,
 };
 
+const gaugeHex: Record<HealthState, string> = {
+  excelente: '#10b981',
+  saludable: '#34d399',
+  observacion: '#f59e0b',
+  riesgo: '#ef4444',
+};
+
 export default function FinancialHealthBanner({ liquidez, endeudamiento, trendPatrimonio, solvencia, companyId }: FinancialHealthBannerProps) {
   const playedRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -132,6 +140,18 @@ export default function FinancialHealthBanner({ liquidez, endeudamiento, trendPa
     () => computeHealth(liquidez, endeudamiento, trendPatrimonio, solvencia),
     [liquidez, endeudamiento, trendPatrimonio, solvencia],
   );
+
+  const breakdown = useMemo(
+    () => getHealthScoreBreakdown({ liquidez, endeudamiento, crecimientoPatrimonial: trendPatrimonio, solvencia }),
+    [liquidez, endeudamiento, trendPatrimonio, solvencia],
+  );
+
+  const breakdownRows = [
+    { key: 'liquidez', title: 'Liquidez', ...breakdown.liquidez, color: '#0ea5e9' },
+    { key: 'endeudamiento', title: 'Endeudamiento', ...breakdown.endeudamiento, color: '#f59e0b' },
+    { key: 'crecimiento', title: 'Crecimiento Patrimonial', ...breakdown.crecimiento, color: '#8b5cf6' },
+    { key: 'solvencia', title: 'Solvencia', ...breakdown.solvencia, color: '#10b981' },
+  ];
 
   const styles = config[state];
   const StateIcon = stateIcons[state];
@@ -216,43 +236,42 @@ export default function FinancialHealthBanner({ liquidez, endeudamiento, trendPa
 
   return (
     <div className={`rounded-2xl border ${styles.border} ${styles.bg} p-4 sm:p-5 shadow-sm`}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${styles.bg} ${styles.icon}`}>
-            <StateIcon className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <span className={`text-3xl font-black leading-none ${styles.text}`}>{score}</span>
-              <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">/100</span>
-              <span className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${styles.bg} ${styles.text}`}>
-                {label}
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400 max-w-lg">{summary}</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${styles.bg} ${styles.icon}`}>
+          <StateIcon className="h-6 w-6" />
         </div>
-
-        <div className="flex items-center gap-4 text-xs shrink-0">
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Liquidez</p>
-            <p className="font-bold text-gray-900 dark:text-white">{liquidez.toFixed(2)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Endeudamiento</p>
-            <p className="font-bold text-gray-900 dark:text-white">{(endeudamiento * 100).toFixed(0)}%</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Var. Patrimonial</p>
-            <p className={`font-bold ${trendPatrimonio >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {trendPatrimonio >= 0 ? '+' : ''}{(trendPatrimonio * 100).toFixed(1)}%
-            </p>
-          </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Salud Financiera</p>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{summary}</p>
         </div>
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/80 dark:bg-gray-900/50">
-        <div className={`h-full rounded-full transition-all duration-700 ${styles.bar}`} style={{ width: `${score}%` }} />
+      <div className="mt-5 grid grid-cols-1 items-center gap-6 sm:grid-cols-[auto_1fr]">
+        <div className="flex flex-col items-center">
+          <SemiGauge value={score} color={gaugeHex[state]} valueText={`${score}`} caption="/100" />
+          <span className={`-mt-1 rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${styles.bg} ${styles.text}`}>
+            {label}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {breakdownRows.map((row) => (
+            <div key={row.key}>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-gray-700 dark:text-gray-300">{row.title}</span>
+                <span className="font-semibold text-gray-400 dark:text-gray-500">
+                  {Math.round(row.score)}/{row.max}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/80 dark:bg-gray-900/50">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${(row.score / row.max) * 100}%`, backgroundColor: row.color }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

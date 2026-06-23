@@ -13,7 +13,6 @@ interface FinancialChartProps {
  * Transforma los datos del backend (gestión/trimestre) a formato compatible con Lightweight Charts (YYYY-MM-DD)
  */
 const transformData = (indicators: any[]) => {
-  console.log("DEBUG FinancialChart RAW METRICS:", indicators);
   if (!indicators || indicators.length === 0) return [];
 
   const transformed = [...indicators]
@@ -36,7 +35,6 @@ const transformData = (indicators: any[]) => {
       };
     });
 
-  console.log("DEBUG FinancialChart TRANSFORMED:", transformed);
   return transformed;
 };
 

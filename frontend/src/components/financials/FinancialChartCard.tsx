@@ -67,7 +67,7 @@ export default function FinancialChartCard({ title, subtitle, data, mode }: Fina
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={formatRatio} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => formatRatio(Number(value))} />
-                <Line type="monotone" dataKey="liquidez" name="Liquidez" stroke="#059669" strokeWidth={3} dot={{ r: 4 }} />
+                <Line type="linear" dataKey="liquidez" name="Liquidez" stroke="#059669" strokeWidth={3} dot={{ r: 4 }} />
               </LineChart>
             ) : mode === 'endeudamiento' ? (
               <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -75,7 +75,7 @@ export default function FinancialChartCard({ title, subtitle, data, mode }: Fina
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={(value) => formatPercent(Number(value))} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => formatPercent(Number(value))} />
-                <Line type="monotone" dataKey="endeudamiento" name="Endeudamiento" stroke="#d97706" strokeWidth={3} dot={{ r: 4 }} />
+                <Line type="linear" dataKey="endeudamiento" name="Endeudamiento" stroke="#d97706" strokeWidth={3} dot={{ r: 4 }} />
               </LineChart>
             ) : (
               <AreaChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -84,7 +84,7 @@ export default function FinancialChartCard({ title, subtitle, data, mode }: Fina
                 <YAxis tickFormatter={formatMoneyCompact} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => formatMoneyCompact(Number(value))} />
                 <Area
-                  type="monotone"
+                  type="linear"
                   dataKey={mode === 'capitalTrabajo' ? 'capitalTrabajo' : 'patrimonio'}
                   name={mode === 'capitalTrabajo' ? 'Capital de trabajo' : 'Patrimonio'}
                   stroke={mode === 'capitalTrabajo' ? '#d97706' : '#2563eb'}

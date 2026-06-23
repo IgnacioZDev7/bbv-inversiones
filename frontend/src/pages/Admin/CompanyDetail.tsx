@@ -248,7 +248,7 @@ const CompanyDetail: React.FC = () => {
                                 </div>
                                 <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                     <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Código BBV</span>
-                                    <span className="text-sm text-gray-900 dark:text-white font-medium font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded">{empresa.codigo_bbv}</span>
+                                    <span className="text-sm dark:text-white font-medium font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded">{empresa.codigo_bbv}</span>
                                 </div>
                                 <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                     <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sigla</span>
@@ -256,7 +256,7 @@ const CompanyDetail: React.FC = () => {
                                 </div>
                                 <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                     <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sector</span>
-                                    <span className="text-sm text-gray-900 dark:text-white font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs">{empresa.sector_nombre}</span>
+                                    <span className="text-gray-900 dark:text-white font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs">{empresa.sector_nombre}</span>
                                 </div>
                                 <div className="flex items-start gap-4 py-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                     <span className="w-40 shrink-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Sitio Web</span>

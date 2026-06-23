@@ -103,7 +103,7 @@ export default function ActivoVsPasivo({ data, companyName }: ActivoVsPasivoProp
               iconType="circle"
             />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="patrimonio"
               name="Patrimonio Neto"
               stackId="1"
@@ -113,7 +113,7 @@ export default function ActivoVsPasivo({ data, companyName }: ActivoVsPasivoProp
               dot={false}
             />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="pasivo"
               name="Pasivo Total"
               stackId="1"
@@ -123,7 +123,7 @@ export default function ActivoVsPasivo({ data, companyName }: ActivoVsPasivoProp
               dot={false}
             />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="activo"
               name="Activo Total"
               stackId="1"

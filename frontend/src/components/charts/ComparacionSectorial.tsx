@@ -4,12 +4,15 @@ import { getReportesByEmpresa } from '../../services/apiServices';
 import SkeletonLoader from '../common/SkeletonLoader';
 import ErrorState from '../common/ErrorState';
 import EmptyState from '../common/EmptyState';
-import { formatPercent } from '../../utils/financialMetrics';
+import { formatPercent, getHealthScoreBreakdown } from '../../utils/financialMetrics';
 import Bar3DChart from '../visuals/Bar3DChart';
+import SectorRadarChart from './SectorRadarChart';
 
 interface CompanyMetrics {
   endeudamiento: number;
   liquidez: number;
+  solvencia: number;
+  crecimiento: number;
 }
 
 interface ComparacionSectorialProps {
@@ -18,6 +21,8 @@ interface ComparacionSectorialProps {
   currentSector?: number;
   currentEndeudamiento: number;
   currentLiquidez: number;
+  currentCrecimiento?: number;
+  currentSolvencia?: number;
 }
 
 interface MetricDef {
@@ -39,26 +44,19 @@ export default function ComparacionSectorial({
   currentSector,
   currentEndeudamiento,
   currentLiquidez,
+  currentCrecimiento = 0,
+  currentSolvencia = 0,
 }: ComparacionSectorialProps) {
   const [companyReports, setCompanyReports] = useState<Record<number, CompanyMetrics>>({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
-  console.log('[ComparacionSectorial] companies.length:', companies.length);
-  console.log('[ComparacionSectorial] currentCompanyId:', currentCompanyId);
-  console.log('[ComparacionSectorial] currentSector (prop):', currentSector, typeof currentSector);
-  console.log('[ComparacionSectorial] all sectors in companies:', [...new Set(companies.map((c) => `${c.sector} (${typeof c.sector})`))]);
-
   const currentCompany = useMemo(
     () => companies.find((c) => c.id_empresa === currentCompanyId),
     [companies, currentCompanyId],
   );
-  console.log('[ComparacionSectorial] currentCompany found:', !!currentCompany);
-  console.log('[ComparacionSectorial] currentCompany.sector:', currentCompany?.sector, typeof currentCompany?.sector);
-  console.log('[ComparacionSectorial] currentCompany.sector_nombre:', currentCompany?.sector_nombre);
 
   const sectorValue = currentSector ?? (currentCompany?.sector as number | undefined);
-  console.log('[ComparacionSectorial] sectorValue used for filter:', sectorValue, typeof sectorValue);
 
   const sectorCompanies = useMemo(() => {
     if (sectorValue == null) return [];
@@ -69,8 +67,6 @@ export default function ComparacionSectorial({
         c.id_empresa === currentCompanyId;
       return match && c.id_empresa !== currentCompanyId;
     });
-    console.log('[ComparacionSectorial] sectorCompanies found:', filtered.length);
-    filtered.forEach((c) => console.log('  -', c.nombre, 'sector:', c.sector));
     return filtered;
   }, [companies, sectorValue, currentCompanyId]);
 
@@ -86,31 +82,37 @@ export default function ComparacionSectorial({
         sectorData.map(async (company) => {
           try {
             const res = await getReportesByEmpresa(company.id_empresa, {
-              page_size: 1,
+              page_size: 2,
               estado_procesamiento: 'PROCESADO',
             });
             const reports = Array.isArray(res) ? res : res.results;
-            const report = reports?.[0];
+            const sorted = [...(reports ?? [])].sort(
+              (a, b) => b.gestion - a.gestion || (b.trimestre ?? 0) - (a.trimestre ?? 0),
+            );
+            const report = sorted[0];
+            const previous = sorted[1];
             if (report?.datos_extraidos_json) {
               const d = report.datos_extraidos_json;
               const activo = Number(d.total_activo || 0);
               const pasivo = Number(d.total_pasivo || 0);
               const ac = Number(d.total_activo_corriente || 0);
               const pc = Number(d.total_pasivo_corriente || 0);
+              const patrimonio = Number(d.total_patrimonio || 0);
+              const previousPatrimonio = previous?.datos_extraidos_json
+                ? Number(previous.datos_extraidos_json.total_patrimonio || 0)
+                : 0;
               results[company.id_empresa] = {
                 endeudamiento: activo > 0 ? pasivo / activo : 0,
                 liquidez: pc > 0 ? ac / pc : 0,
+                solvencia: pasivo > 0 ? activo / pasivo : 0,
+                crecimiento: previousPatrimonio !== 0 ? (patrimonio - previousPatrimonio) / previousPatrimonio : 0,
               };
-              console.log(`[ComparacionSectorial] ${company.nombre}:`, results[company.id_empresa]);
-            } else {
-              console.log(`[ComparacionSectorial] ${company.nombre}: no report found`);
             }
-          } catch (err) {
-            console.log(`[ComparacionSectorial] ${company.nombre}: fetch error`, err);
+          } catch {
+            // silent
           }
         }),
       );
-      console.log('[ComparacionSectorial] total companyReports built:', Object.keys(results).length);
       setCompanyReports(results);
       setLoading(false);
     };
@@ -121,6 +123,40 @@ export default function ComparacionSectorial({
     endeudamiento: currentEndeudamiento,
     liquidez: currentLiquidez,
   };
+
+  const radarData = useMemo(() => {
+    const peers = Object.values(companyReports);
+    if (peers.length === 0) return null;
+
+    const sectorAvg: CompanyMetrics = {
+      endeudamiento: peers.reduce((s, p) => s + p.endeudamiento, 0) / peers.length,
+      liquidez: peers.reduce((s, p) => s + p.liquidez, 0) / peers.length,
+      solvencia: peers.reduce((s, p) => s + p.solvencia, 0) / peers.length,
+      crecimiento: peers.reduce((s, p) => s + p.crecimiento, 0) / peers.length,
+    };
+
+    const empresaBreakdown = getHealthScoreBreakdown({
+      liquidez: currentLiquidez,
+      endeudamiento: currentEndeudamiento,
+      crecimientoPatrimonial: currentCrecimiento,
+      solvencia: currentSolvencia,
+    });
+    const sectorBreakdown = getHealthScoreBreakdown({
+      liquidez: sectorAvg.liquidez,
+      endeudamiento: sectorAvg.endeudamiento,
+      crecimientoPatrimonial: sectorAvg.crecimiento,
+      solvencia: sectorAvg.solvencia,
+    });
+
+    const toPct = (b: { score: number; max: number }) => Math.round((b.score / b.max) * 100);
+
+    return [
+      { axis: 'Liquidez', empresa: toPct(empresaBreakdown.liquidez), sector: toPct(sectorBreakdown.liquidez) },
+      { axis: 'Endeudamiento', empresa: toPct(empresaBreakdown.endeudamiento), sector: toPct(sectorBreakdown.endeudamiento) },
+      { axis: 'Crecimiento', empresa: toPct(empresaBreakdown.crecimiento), sector: toPct(sectorBreakdown.crecimiento) },
+      { axis: 'Solvencia', empresa: toPct(empresaBreakdown.solvencia), sector: toPct(sectorBreakdown.solvencia) },
+    ];
+  }, [companyReports, currentLiquidez, currentEndeudamiento, currentCrecimiento, currentSolvencia]);
 
   if (sectorData.length === 0) {
     return (
@@ -145,6 +181,12 @@ export default function ComparacionSectorial({
       </div>
 
       {fetchError && !loading && <div className="mb-4"><ErrorState message="Error al cargar datos del sector." /></div>}
+
+      {!loading && radarData && (
+        <div className="mb-6 border-b border-gray-100 pb-6 dark:border-gray-700">
+          <SectorRadarChart data={radarData} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {METRICS.map((metric) => (

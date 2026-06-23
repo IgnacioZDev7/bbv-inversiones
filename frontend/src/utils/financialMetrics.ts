@@ -95,19 +95,39 @@ export const toFinancialPoint = (report: ReporteFinanciero): FinancialPoint => {
   };
 };
 
+export interface HealthScoreBreakdown {
+  liquidez: { score: number; max: number };
+  endeudamiento: { score: number; max: number };
+  crecimiento: { score: number; max: number };
+  solvencia: { score: number; max: number };
+}
+
+export function getHealthScoreBreakdown(params: {
+  liquidez: number;
+  endeudamiento: number;
+  crecimientoPatrimonial: number;
+  solvencia?: number;
+}): HealthScoreBreakdown {
+  return {
+    liquidez: { score: Math.min(35, Math.max(0, (params.liquidez - 0.8) / 0.7 * 35)), max: 35 },
+    endeudamiento: { score: Math.min(35, Math.max(0, (0.9 - params.endeudamiento) / 0.5 * 35)), max: 35 },
+    crecimiento: { score: Math.min(20, Math.max(0, (params.crecimientoPatrimonial + 0.15) / 0.25 * 20)), max: 20 },
+    solvencia: {
+      score: params.solvencia != null ? Math.min(10, Math.max(0, (params.solvencia - 1.0) / 1.0 * 10)) : 0,
+      max: 10,
+    },
+  };
+}
+
 export function calculateFinancialHealthScore(params: {
   liquidez: number;
   endeudamiento: number;
   crecimientoPatrimonial: number;
   solvencia?: number;
 }): number {
-  const liqScore = Math.min(35, Math.max(0, (params.liquidez - 0.8) / 0.7 * 35));
-  const endScore = Math.min(35, Math.max(0, (0.9 - params.endeudamiento) / 0.5 * 35));
-  const trendScore = Math.min(20, Math.max(0, (params.crecimientoPatrimonial + 0.15) / 0.25 * 20));
-  const solvScore = params.solvencia != null
-    ? Math.min(10, Math.max(0, (params.solvencia - 1.0) / 1.0 * 10))
-    : 0;
-  return Math.round(Math.min(100, Math.max(0, liqScore + endScore + trendScore + solvScore)));
+  const b = getHealthScoreBreakdown(params);
+  const total = b.liquidez.score + b.endeudamiento.score + b.crecimiento.score + b.solvencia.score;
+  return Math.round(Math.min(100, Math.max(0, total)));
 }
 
 export function classifyHealthScore(score: number): FinancialStatus {

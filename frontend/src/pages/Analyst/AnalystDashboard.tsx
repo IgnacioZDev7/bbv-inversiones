@@ -5,6 +5,7 @@ import { getDashboardData } from '../../services/apiServices';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from 'recharts';
+import GradientText from '../../components/common/GradientText';
 
 const IconBuilding = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +89,9 @@ export default function AnalystDashboard() {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">Analista</p>
-        <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Dashboard de análisis</h1>
+        <h1 className="mt-1 text-2xl font-bold">
+          <GradientText>Dashboard de análisis</GradientText>
+        </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400">
           Visión general del estado de procesamiento y acceso rápido a empresas.
         </p>

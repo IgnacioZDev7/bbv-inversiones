@@ -15,8 +15,6 @@ interface HistoricalChartProps {
 }
 
 export default function HistoricalChart({ metrics }: HistoricalChartProps) {
-  // Debug para verificar años en consola
-  console.log("DEBUG HistoricalChart (ApexCharts) metrics:", metrics);
 
   if (!metrics || metrics.length === 0) {
     return (

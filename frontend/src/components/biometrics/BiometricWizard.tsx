@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { verifyBiometricIdentity, checkLiveness } from '../../services/apiServices';
+import { verifyBiometricIdentity, checkLiveness, validateDocument, verifyPoses } from '../../services/apiServices';
 import BiometricFaceGuide from './BiometricFaceGuide';
+import OrbitLoader from '../common/OrbitLoader';
+import RippleButton from '../common/RippleButton';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -63,9 +65,11 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
   const [step, setStep] = useState<WizardStep>(1);
   const [carnetFile, setCarnetFile] = useState<File | null>(null);
   const [carnetPreview, setCarnetPreview] = useState<string | null>(null);
-  const [faceImage, setFaceImage] = useState<File | null>(null);
+  const [faceImages, setFaceImages] = useState<{ frontal: File; left: File; right: File } | null>(null);
   const [faceCaptured, setFaceCaptured] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [docValidating, setDocValidating] = useState(false);
+  const [docValidation, setDocValidation] = useState<{ valid: boolean; ci_match: boolean; name_match: boolean; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ similarity: number } | null>(null);
   const [livenessResult, setLivenessResult] = useState<{ alive: boolean; confidence: number } | null>(null);
@@ -88,6 +92,7 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
       if (file) {
         setCarnetFile(file);
         setCarnetPreview(URL.createObjectURL(file));
+        setDocValidation(null);
         setError(null);
       }
     },
@@ -96,15 +101,39 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
     maxSize: 10 * 1024 * 1024,
   });
 
-  const handleStep1Next = () => {
-    if (!carnetFile) return;
-    setStep(2);
+  const goToStep = (s: WizardStep) => {
+    setError(null);
+    if (s < 3) {
+      setVerifyResult(null);
+      setLivenessResult(null);
+    }
+    setStep(s);
   };
 
-  const handleFaceCaptureComplete = (frontalImage: File) => {
-    setFaceImage(frontalImage);
+  const handleStep1Next = async () => {
+    if (!carnetFile) return;
+    setDocValidating(true);
+    setError(null);
+    setDocValidation(null);
+    try {
+      const result = await validateDocument(carnetFile);
+      setDocValidation(result);
+      if (result.valid) {
+        setTimeout(() => goToStep(2), 600);
+      } else {
+        setError(result.message);
+      }
+    } catch (e: any) {
+      setError(e.response?.data?.error || e.message || 'Error al validar el documento.');
+    } finally {
+      setDocValidating(false);
+    }
+  };
+
+  const handleFaceCaptureComplete = (images: { frontal: File; left: File; right: File }) => {
+    setFaceImages(images);
     setFaceCaptured(true);
-    setTimeout(() => setStep(3), 400);
+    setTimeout(() => goToStep(3), 400);
   };
 
   const handleFaceError = (message: string) => {
@@ -112,11 +141,18 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
   };
 
   const handleVerify = async () => {
-    if (!carnetFile || !faceImage) return;
+    if (!carnetFile || !faceImages) return;
     setLoading(true);
     setError(null);
     try {
-      const verify = await verifyBiometricIdentity(carnetFile, faceImage);
+      const poseResult = await verifyPoses(faceImages.frontal, faceImages.left, faceImages.right);
+      if (!poseResult.poses_valid) {
+        setError(poseResult.message);
+        setLoading(false);
+        return;
+      }
+
+      const verify = await verifyBiometricIdentity(carnetFile, faceImages.frontal);
       if (!verify.verified) {
         setError(`No coinciden los rostros (similitud: ${verify.similarity}%). Intenta con mejores fotos.`);
         setLoading(false);
@@ -124,7 +160,7 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
       }
       setVerifyResult({ similarity: verify.similarity });
 
-      const liveness = await checkLiveness(faceImage);
+      const liveness = await checkLiveness(faceImages.frontal);
       setLivenessResult({ alive: liveness.alive, confidence: liveness.confidence });
 
       if (!liveness.alive) {
@@ -145,7 +181,7 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
 
   const stepIndicator = (s: WizardStep) => {
     const isActive = step === s;
-    const isDone = (s === 1 && carnetFile) || (s === 2 && faceCaptured) || (s === 3 && livenessResult !== null) || (s === 1 && step > 1) || (s === 2 && step > 2);
+    const isDone = (s === 1 && (docValidation?.valid || step > 1)) || (s === 2 && (faceCaptured || step > 2)) || (s === 3 && livenessResult !== null);
     return (
       <div key={s} className="flex items-center gap-3">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black transition-all duration-500 ${
@@ -244,16 +280,57 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
 
         {/* Body */}
         <div className={`px-6 py-4 transition-all duration-300 ${slideIn ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}`}>
-          {/* Step 1: CI Upload */}
+          {/* Step 1: CI Upload + Document Validation */}
           {step === 1 && (
             <div className="space-y-4">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{STEP_CONFIG[0].desc}</p>
               {renderUploadZone(getCarnetProps, getCarnetInput, isCarnetDrag, carnetPreview, 'Carnet de Identidad')}
-              {carnetFile && (
+              {carnetFile && !docValidation && (
                 <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                   <CheckIcon className="h-3.5 w-3.5" />
                   {carnetFile.name} ({(carnetFile.size / 1024).toFixed(0)} KB)
                 </p>
+              )}
+              {docValidating && (
+                <div className="flex items-center gap-3 rounded-2xl border border-blue-200/50 bg-blue-50/50 p-4 dark:border-blue-500/20 dark:bg-blue-500/5">
+                  <OrbitLoader size={20} color="#3b82f6" />
+                  <p className="text-xs font-bold text-blue-700 dark:text-blue-300">Validando documento con Amazon Rekognition...</p>
+                </div>
+              )}
+              {docValidation && (
+                <div className={`rounded-2xl border p-4 ${
+                  docValidation.valid
+                    ? 'border-emerald-200/50 bg-emerald-50/50 dark:border-emerald-500/20 dark:bg-emerald-500/5'
+                    : 'border-red-200/50 bg-red-50/50 dark:border-red-500/20 dark:bg-red-500/5'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {docValidation.valid ? (
+                      <CheckIcon className="h-5 w-5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <svg className="h-5 w-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                    )}
+                    <p className={`text-xs font-bold ${docValidation.valid ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>
+                      {docValidation.message}
+                    </p>
+                  </div>
+                  {!docValidation.valid && (
+                    <div className="mt-2 flex gap-4 text-[10px] font-medium">
+                      <span className={docValidation.ci_match ? 'text-emerald-600' : 'text-gray-400'}>
+                        CI: {docValidation.ci_match ? '✓' : '✗'}
+                      </span>
+                      <span className={docValidation.name_match ? 'text-emerald-600' : 'text-gray-400'}>
+                        Nombre: {docValidation.name_match ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {error && !docValidating && !docValidation && (
+                <div className="animate-shake rounded-2xl border border-red-200/50 bg-red-50/50 p-4 dark:border-red-500/20 dark:bg-red-500/5">
+                  <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>
+                </div>
               )}
             </div>
           )}
@@ -280,10 +357,10 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
               <div className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-500/5">
                 <p className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2">
                   <FaceScanIcon className="h-5 w-5 shrink-0" />
-                  Verificaremos tu identidad y actividad biométrica
+                  Verificaremos poses, identidad y actividad biométrica
                 </p>
                 <p className="mt-1 text-[10px] font-medium text-amber-600/70 dark:text-amber-400/70">
-                  Al confirmar, se enviarán las imágenes a Amazon Rekognition para su análisis.
+                  Al confirmar, se analizarán las 3 capturas faciales con Amazon Rekognition.
                 </p>
               </div>
 
@@ -328,47 +405,74 @@ export default function BiometricWizard({ onComplete, onClose }: BiometricWizard
             {step === 1 && (
               <>
                 <button
-                  onClick={() => setStep((step - 1) as WizardStep)}
+                  onClick={onClose}
+                  className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 transition-all"
+                >
+                  Cancelar
+                </button>
+                <RippleButton
+                  onClick={handleStep1Next}
+                  disabled={!carnetFile || docValidating}
+                  className="flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-brand-600 disabled:opacity-40 transition-all shadow-lg shadow-brand-500/20 min-w-[130px] justify-center"
+                >
+                  {docValidating ? (
+                    <>Validando<LoadingDots /></>
+                  ) : docValidation && !docValidation.valid ? (
+                    'Reintentar'
+                  ) : (
+                    <>
+                      Continuar
+                      <ArrowRightIcon className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </RippleButton>
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <button
+                  onClick={() => goToStep(1)}
                   className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 transition-all"
                 >
                   Atrás
                 </button>
                 <button
-                  onClick={handleStep1Next}
-                  disabled={!carnetFile}
-                  className="flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-brand-600 disabled:opacity-40 transition-all shadow-lg shadow-brand-500/20"
+                  disabled
+                  className="flex items-center gap-2 rounded-xl bg-brand-500/60 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white/60 transition-all cursor-not-allowed"
                 >
-                  Continuar
-                  <ArrowRightIcon className="h-3.5 w-3.5" />
+                  Capturando...
                 </button>
               </>
             )}
-            {step === 2 && (
-              <button
-                disabled
-                className="flex items-center gap-2 rounded-xl bg-brand-500/60 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white/60 transition-all cursor-not-allowed"
-              >
-                Capturando...
-              </button>
-            )}
             {step === 3 && (
-              <button
-                onClick={handleVerify}
-                disabled={loading}
-                className="flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-brand-600 disabled:opacity-40 transition-all shadow-lg shadow-brand-500/20 min-w-[140px] justify-center"
-              >
-                {loading ? (
-                  <>
-                    Verificando
-                    <LoadingDots />
-                  </>
-                ) : (
-                  <>
-                    Confirmar
-                    <CheckIcon className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={() => goToStep(2)}
+                  disabled={loading}
+                  className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 transition-all disabled:opacity-40"
+                >
+                  Atrás
+                </button>
+                <RippleButton
+                  onClick={handleVerify}
+                  disabled={loading || !!livenessResult}
+                  className="flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-brand-600 disabled:opacity-40 transition-all shadow-lg shadow-brand-500/20 min-w-[140px] justify-center"
+                >
+                  {loading ? (
+                    <>
+                      Verificando
+                      <LoadingDots />
+                    </>
+                  ) : error ? (
+                    'Reintentar'
+                  ) : (
+                    <>
+                      Confirmar
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </RippleButton>
+              </>
             )}
           </div>
         </div>

@@ -75,16 +75,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithTokens = async (access: string, refresh: string) => {
     setIsLoading(true);
+    sessionStorage.removeItem('biometric_verified');
+    sessionStorage.removeItem('biometric_timestamp');
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
     await fetchMe();
   };
 
   const logout = () => {
+    const refresh = localStorage.getItem('refresh_token');
+    try {
+      apiClient.post('/auth/logout/', { refresh });
+    } catch {
+      // silent — siempre limpiamos localStorage aunque falle
+    }
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('biometric_verified');
+    sessionStorage.removeItem('biometric_timestamp');
     setUser(null);
-    // Opcional: Podrías llamar al endpoint de logout del backend si existe para invalidar el refresh token
   };
 
   return (

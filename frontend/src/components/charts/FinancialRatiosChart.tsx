@@ -61,7 +61,7 @@ export default function FinancialRatiosChart({ data }: FinancialRatiosChartProps
               wrapperStyle={{ fontSize: 11, paddingTop: 20, fontWeight: 600 }} 
             />
             <Line
-              type="monotone"
+              type="linear"
               dataKey="liquidez"
               name="Liquidez"
               stroke="#10b981"
@@ -70,7 +70,7 @@ export default function FinancialRatiosChart({ data }: FinancialRatiosChartProps
               activeDot={{ r: 5 }}
             />
             <Line
-              type="monotone"
+              type="linear"
               dataKey="endeudamiento"
               name="Endeudamiento"
               stroke="#f59e0b"

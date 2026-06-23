@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from api.views.financials import EmpresaViewSet, SectorEmpresaViewSet, ReporteFinancieroViewSet
 from api.views.accounts import UsuarioViewSet
 from api.views.analytics import IndicadorViewSet, SimulacionViewSet, RecomendacionViewSet
-from api.views.biometrics import VerifyIdentityView, LivenessDetectionView
+from api.views.biometrics import VerifyIdentityView, LivenessDetectionView, DocumentValidationView, PoseVerificationView
 from api.views.chat import ChatView
 from api.views.dashboard import DashboardView
 from apps.accounts.views import GoogleLogin, UserMeView
@@ -25,9 +25,11 @@ urlpatterns = [
     path('auth/', include('dj_rest_auth.urls')),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
 
-    # Biometrics — Verificación facial y liveness
+    # Biometrics — Verificación facial, liveness y validación documental
     path('biometrics/verify/', VerifyIdentityView.as_view(), name='biometrics-verify'),
     path('biometrics/liveness/', LivenessDetectionView.as_view(), name='biometrics-liveness'),
+    path('biometrics/validate-document/', DocumentValidationView.as_view(), name='biometrics-validate-document'),
+    path('biometrics/verify-poses/', PoseVerificationView.as_view(), name='biometrics-verify-poses'),
 
     # Chat — Asistente financiero con Gemini
     path('chat/', ChatView.as_view(), name='chat'),

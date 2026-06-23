@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
 import { getEmpresaById, getReportesByEmpresa, getAllEmpresas } from '../../services/apiServices';
@@ -9,10 +9,13 @@ import EmptyState from '../../components/common/EmptyState';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import FinancialHealthBanner from '../../components/financials/FinancialHealthBanner';
 import FinancialHealth3D from '../../components/visuals/FinancialHealth3D';
+import FinancialBreakdown3D from '../../components/visuals/FinancialBreakdown3D';
 import ComparacionSectorial from '../../components/charts/ComparacionSectorial';
 import HistoricalFinancialChart from '../../components/charts/HistoricalFinancialChart';
 import ActivoVsPasivo from '../../components/charts/ActivoVsPasivo';
 import FinancialRatiosChart from '../../components/charts/FinancialRatiosChart';
+import Sparkline from '../../components/common/Sparkline';
+import CompanyHeroCard from '../../components/financials/CompanyHeroCard';
 
 interface Metric {
   activos: number;
@@ -37,20 +40,39 @@ const mapReporteToMetric = (r: ReporteFinanciero): Metric => {
   };
 };
 
-function MiniKpi({ label, value, trend, color }: { label: string; value: string; trend?: string; color: string }) {
+function MiniKpi({
+  label,
+  value,
+  trend,
+  color,
+  sparklineData,
+  sparklineColor,
+}: {
+  label: string;
+  value: string;
+  trend?: string;
+  color: string;
+  sparklineData?: number[];
+  sparklineColor?: string;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50">
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">{label}</p>
         <p className={`text-sm font-black leading-tight ${color}`}>{value}</p>
+        {trend && <span className="text-[9px] font-medium text-gray-400 dark:text-gray-500">{trend}</span>}
       </div>
-      {trend && <span className="shrink-0 text-[9px] font-medium text-gray-400 dark:text-gray-500">{trend}</span>}
+      {sparklineData && sparklineColor && (
+        <Sparkline data={sparklineData} color={sparklineColor} />
+      )}
     </div>
   );
 }
 
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>();
+  const historyRef = useRef<HTMLDivElement>(null);
+  const sectorRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const empresaId = Number(id);
 
@@ -162,35 +184,54 @@ export default function CompanyDetail() {
           />
         ) : (
           <div className="animate-fade-in space-y-6">
-            {/* KPIs densos estilo Yahoo Finance */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <MiniKpi
-                label="Patrimonio"
-                value={`Bs ${formatMoneyCompact(current.patrimonio)}`}
-                trend={
-                  trendPatrimonio !== 0
-                    ? `${trendPatrimonio > 0 ? '+' : ''}${(trendPatrimonio * 100).toFixed(1)}%`
-                    : 'Estable'
-                }
-                color={trendPatrimonio >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}
+            {/* Hero de patrimonio + KPIs densos estilo Yahoo Finance */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+              <CompanyHeroCard
+                codigoBbv={empresa?.codigo_bbv}
+                patrimonio={current.patrimonio}
+                trend={trendPatrimonio}
+                sparklineData={points.map((p) => p.patrimonio)}
+                onViewHistory={() => historyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onCompareSector={() => sectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               />
-              <MiniKpi
-                label="Activo"
-                value={`Bs ${formatMoneyCompact(current.activos)}`}
-                color="text-blue-600 dark:text-blue-400"
-              />
-              <MiniKpi
-                label="Liquidez"
-                value={current.liquidez_corriente.toFixed(2)}
-                trend={current.liquidez_corriente >= 1.2 ? 'Saludable' : 'Riesgo'}
-                color={current.liquidez_corriente >= 1.2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}
-              />
-              <MiniKpi
-                label="Endeudamiento"
-                value={formatPercent(current.endeudamiento)}
-                trend={current.endeudamiento <= 0.6 ? 'Independiente' : 'Apalancado'}
-                color={current.endeudamiento <= 0.6 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}
-              />
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <MiniKpi
+                  label="Patrimonio"
+                  value={`Bs ${formatMoneyCompact(current.patrimonio)}`}
+                  trend={
+                    trendPatrimonio !== 0
+                      ? `${trendPatrimonio > 0 ? '+' : ''}${(trendPatrimonio * 100).toFixed(1)}%`
+                      : 'Estable'
+                  }
+                  color={trendPatrimonio >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}
+                  sparklineData={points.map((p) => p.patrimonio)}
+                  sparklineColor={trendPatrimonio >= 0 ? '#10b981' : '#ef4444'}
+                />
+                <MiniKpi
+                  label="Activo"
+                  value={`Bs ${formatMoneyCompact(current.activos)}`}
+                  color="text-blue-600 dark:text-blue-400"
+                  sparklineData={points.map((p) => p.activo)}
+                  sparklineColor="#3b82f6"
+                />
+                <MiniKpi
+                  label="Liquidez"
+                  value={current.liquidez_corriente.toFixed(2)}
+                  trend={current.liquidez_corriente >= 1.2 ? 'Saludable' : 'Riesgo'}
+                  color={current.liquidez_corriente >= 1.2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}
+                  sparklineData={points.map((p) => p.liquidez)}
+                  sparklineColor={current.liquidez_corriente >= 1.2 ? '#10b981' : '#f59e0b'}
+                />
+                <MiniKpi
+                  label="Endeudamiento"
+                  value={formatPercent(current.endeudamiento)}
+                  trend={current.endeudamiento <= 0.6 ? 'Independiente' : 'Apalancado'}
+                  sparklineData={points.map((p) => p.endeudamiento)}
+                  sparklineColor={current.endeudamiento <= 0.6 ? '#10b981' : '#ef4444'}
+                  color={current.endeudamiento <= 0.6 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}
+                />
+              </div>
             </div>
 
             {/* Banner de salud financiera */}
@@ -203,17 +244,22 @@ export default function CompanyDetail() {
             />
 
             {/* Gráfico principal histórico */}
-            <ErrorBoundary componentName="HistoricalFinancialChart">
-              <HistoricalFinancialChart reports={reports} companyName={empresa?.nombre} />
-            </ErrorBoundary>
+            <div ref={historyRef}>
+              <ErrorBoundary componentName="HistoricalFinancialChart">
+                <HistoricalFinancialChart reports={reports} companyName={empresa?.nombre} />
+              </ErrorBoundary>
+            </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <ErrorBoundary componentName="ComposicionFinanciera">
                 <ActivoVsPasivo data={points} />
               </ErrorBoundary>
               <ErrorBoundary componentName="FinancialRatios">
                 <FinancialRatiosChart data={points} />
               </ErrorBoundary>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <FinancialHealth3D
                 score={calculateFinancialHealthScore({
                   liquidez: current.liquidez_corriente,
@@ -224,18 +270,26 @@ export default function CompanyDetail() {
                 liquidez={current.liquidez_corriente}
                 endeudamiento={current.endeudamiento}
               />
+              <FinancialBreakdown3D
+                crecimientoPatrimonial={trendPatrimonio}
+                solvencia={current.pasivos > 0 ? current.activos / current.pasivos : 0}
+              />
             </div>
 
             {/* Comparación Sectorial */}
-            <ErrorBoundary componentName="ComparacionSectorial">
-              <ComparacionSectorial
-                companies={companies}
-                currentCompanyId={empresaId}
-                currentSector={empresa?.sector}
-                currentEndeudamiento={current.endeudamiento}
-                currentLiquidez={current.liquidez_corriente}
-              />
-            </ErrorBoundary>
+            <div ref={sectorRef}>
+              <ErrorBoundary componentName="ComparacionSectorial">
+                <ComparacionSectorial
+                  companies={companies}
+                  currentCompanyId={empresaId}
+                  currentSector={empresa?.sector}
+                  currentEndeudamiento={current.endeudamiento}
+                  currentLiquidez={current.liquidez_corriente}
+                  currentCrecimiento={trendPatrimonio}
+                  currentSolvencia={current.pasivos > 0 ? current.activos / current.pasivos : 0}
+                />
+              </ErrorBoundary>
+            </div>
           </div>
         )}
       </div>

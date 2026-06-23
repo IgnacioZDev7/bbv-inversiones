@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BiometricProgressSphere from './BiometricProgressSphere';
 
 interface BiometricFaceGuideProps {
-  onCaptureComplete: (frontalImage: File) => void;
+  onCaptureComplete: (images: { frontal: File; left: File; right: File }) => void;
   onError: (message: string) => void;
 }
 
@@ -133,7 +133,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
     else setRightPreview(dataUrl);
     updateNodeStatus(position, 'captured');
 
-    // Pre-activate next node and reset countdown to avoid visual gaps
     if (nextPhase === 'left-countdown') {
       updateNodeStatus('left', 'active');
       setCountdown(3);
@@ -219,9 +218,12 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
     if (phase === 'complete') {
       playSuccessSound(audioCtxRef.current);
       const t = setTimeout(() => {
-        if (frontPreview) {
-          const file = dataUrlToFile(frontPreview, 'selfie.jpg');
-          onCaptureComplete(file);
+        if (frontPreview && leftPreview && rightPreview) {
+          onCaptureComplete({
+            frontal: dataUrlToFile(frontPreview, 'selfie_front.jpg'),
+            left: dataUrlToFile(leftPreview, 'selfie_left.jpg'),
+            right: dataUrlToFile(rightPreview, 'selfie_right.jpg'),
+          });
         }
       }, 500);
       return () => clearTimeout(t);
@@ -247,7 +249,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
     <div className="flex flex-col lg:flex-row gap-6">
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Left Column: Camera */}
       <div className="relative flex-1 flex items-center justify-center">
         <div className="relative w-full max-w-[400px] aspect-[4/3] rounded-2xl overflow-hidden bg-gray-900 shadow-2xl">
           <video
@@ -258,7 +259,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
             className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${phase === 'complete' ? 'opacity-60 scale-105' : 'opacity-100'}`}
           />
 
-          {/* Circular face guide overlay */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
               <motion.div
@@ -315,7 +315,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
             </div>
           </div>
 
-          {/* Top status bar */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
             <div className="flex items-center gap-2 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5">
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
@@ -330,7 +329,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
             )}
           </div>
 
-          {/* Bottom instruction bar */}
           {phase !== 'complete' && (
             <div className="absolute bottom-3 left-3 right-3">
               <motion.div key={phase} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -353,13 +351,11 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
         </div>
       </div>
 
-      {/* Right Column: Position Indicator */}
       <div className="w-full lg:w-48 flex flex-col items-center justify-center gap-5">
         <BiometricProgressSphere status={phase as any} />
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">Posiciones</div>
 
         <div className="relative flex flex-col items-center gap-3">
-          {/* Front node */}
           <motion.div className="flex flex-col items-center gap-1.5"
             animate={nodes[0].status === 'active' ? { y: [0, -3, 0] } : {}}
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -382,7 +378,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
           </motion.div>
 
           <div className="flex items-center gap-8">
-            {/* Left node */}
             <motion.div className="flex flex-col items-center gap-1.5"
               animate={nodes[1].status === 'active' ? { x: [0, -3, 0] } : {}}
               transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -404,7 +399,6 @@ export default function BiometricFaceGuide({ onCaptureComplete, onError }: Biome
               }`}>{nodes[1].label}</span>
             </motion.div>
 
-            {/* Right node */}
             <motion.div className="flex flex-col items-center gap-1.5"
               animate={nodes[2].status === 'active' ? { x: [0, 3, 0] } : {}}
               transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}

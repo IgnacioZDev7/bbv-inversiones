@@ -799,3 +799,50 @@ span.flatpickr-weekday,
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
+
+@keyframes chevronFlowUp {
+  0% { opacity: 0; transform: translateY(6px); }
+  35% { opacity: 1; transform: translateY(0); }
+  65% { opacity: 1; transform: translateY(-2px); }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes chevronFlowDown {
+  0% { opacity: 0; transform: translateY(-6px); }
+  35% { opacity: 1; transform: translateY(0); }
+  65% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+
+.chevron-flow-up {
+  animation: chevronFlowUp 1.4s ease-in-out infinite;
+}
+
+.chevron-flow-down {
+  animation: chevronFlowDown 1.4s ease-in-out infinite;
+}
+
+@keyframes gradientShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-text-shimmer {
+  background-size: 200% auto;
+  animation: gradientShimmer 4s ease-in-out infinite;
+}
+
+@keyframes ripple-effect {
+  to { transform: scale(2.5); opacity: 0; }
+}
+
+.ripple-span {
+  position: absolute;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.45;
+  transform: scale(0);
+  animation: ripple-effect 0.6s ease-out;
+  pointer-events: none;
+}

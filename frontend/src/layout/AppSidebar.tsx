@@ -224,7 +224,7 @@ const MENU_CONFIG: NavItem[] = [
     allowedRoles: ALL_ROLES,
   },
   {
-    name: "Completar perfil",
+    name: "Mi Perfil",
     icon: <UserCircleIcon />,
     path: "/complete-profile",
     allowedRoles: ALL_ROLES,
