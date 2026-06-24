@@ -313,6 +313,12 @@ export interface DashboardData {
     activo: boolean;
     created_at: string;
   }>;
+  actividad_7_dias: Array<{
+    fecha: string;
+    dia_semana: string;
+    procesados: number;
+    errores: number;
+  }>;
 }
 
 export const getDashboardData = () =>

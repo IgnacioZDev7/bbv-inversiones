@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useApi } from '../../hooks/useApi';
 import { useUIFeedback } from '../../context/UIFeedbackContext';
-import { getEmpresas, getSectores, createEmpresa, updateEmpresa, deleteEmpresa } from '../../services/apiServices';
+import { getEmpresas, getAllSectores, createEmpresa, updateEmpresa, deleteEmpresa } from '../../services/apiServices';
 import type { Empresa, PaginatedResponse, SectorEmpresa } from '../../types/api';
 import { StaggerRow } from '../../components/common/Stagger';
 import RippleButton from '../../components/common/RippleButton';
@@ -72,9 +72,9 @@ const CompaniesManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Sectores para el filtro desplegable
-  const { data: sectoresData } = useApi<PaginatedResponse<SectorEmpresa>>(
-    () => getSectores(),
+  // Sectores para el filtro desplegable (todos, sin paginar)
+  const { data: sectores } = useApi<SectorEmpresa[]>(
+    () => getAllSectores(),
     []
   );
 
@@ -228,7 +228,7 @@ const CompaniesManagement: React.FC = () => {
           className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all min-w-[200px]"
         >
           <option value="">Todos los sectores</option>
-          {sectoresData?.results.map((s) => (
+          {sectores?.map((s) => (
             <option key={s.id_sector} value={s.id_sector}>
               {s.nombre}
             </option>
@@ -411,7 +411,7 @@ const CompaniesManagement: React.FC = () => {
                   required
                 >
                   <option value="">Seleccionar sector</option>
-                  {sectoresData?.results.map((s) => (
+                  {sectores?.map((s) => (
                     <option key={s.id_sector} value={s.id_sector}>{s.nombre}</option>
                   ))}
                 </select>

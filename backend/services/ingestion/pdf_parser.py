@@ -3,6 +3,31 @@ import pdfplumber
 import re
 
 
+def _reconstruir_ultimo_numero(numeros: list) -> str:
+    """Reconstruye el último número de una lista de fragmentos numéricos.
+
+    pdfplumber a veces inserta un espacio "fantasma" en medio de un número
+    al extraer el texto (ej. "8 32,289" en vez de "832,289"), lo que el
+    regex de extracción separa en dos fragmentos: "8" y "32,289". Si solo
+    se toma el último fragmento se pierde el primer dígito y el valor
+    queda truncado (ej. 32289 en vez de 832289).
+
+    Se fusiona el último fragmento con los fragmentos previos mientras
+    estos sean "cortos" (<=3 caracteres) y no tengan separadores propios
+    (',' o '.'), ya que un número completo e independiente (otra columna,
+    otro periodo, etc.) normalmente trae sus propios separadores de miles
+    o tiene más de 3 dígitos.
+    """
+    fragmentos = list(numeros)
+    while len(fragmentos) >= 2:
+        anterior = fragmentos[-2]
+        if len(anterior) <= 3 and ',' not in anterior and '.' not in anterior:
+            fragmentos[-2:] = [anterior + fragmentos[-1]]
+        else:
+            break
+    return fragmentos[-1]
+
+
 def _parse_numero(raw: str) -> float:
     """Convierte un número tal como aparece en los PDF de la BBV a float.
 
@@ -53,7 +78,7 @@ class PDFParser:
                 numeros = re.findall(r'[\d\.,]+', line)
                 if numeros:
                     # Parsear el último número ignorando si hay texto sucio alrededor
-                    valor = _parse_numero(numeros[-1])
+                    valor = _parse_numero(_reconstruir_ultimo_numero(numeros))
                         
                     if 'TOTAL PASIVO Y PATRIMONIO' in line_upper:
                         continue
@@ -90,7 +115,20 @@ class PDFParser:
             fecha = self.extraer_fecha(texto_completo)
             lineas = texto_completo.split('\n')
             valores = self.extraer_totales(lineas)
-            
+
+            if all(v is None for v in valores.values()):
+                return {
+                    'success': False,
+                    'error': (
+                        'El PDF no contiene ningún monto extraíble: solo trae las '
+                        'etiquetas/códigos de cuenta, sin la columna de valores. '
+                        'Esto es un defecto del documento original publicado en '
+                        'bbv.com.bo (suele pasar con exportaciones de Excel a PDF '
+                        'donde la columna de montos quedó fuera del área de '
+                        'impresión), no un error de nuestro sistema.'
+                    ),
+                }
+
             return {
                 'success': True,
                 'fecha_publicacion': fecha,

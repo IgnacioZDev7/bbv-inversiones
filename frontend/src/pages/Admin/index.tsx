@@ -81,15 +81,15 @@ const AdminDashboard: React.FC = () => {
     { title: 'Con Error', value: errorsInSample, icon: <IconError />, color: 'bg-red-600' },
   ], [dashboardData, processedInSample, errorsInSample]);
 
-  const systemActivity = useMemo(() => [
-    { name: 'Lun', processed: 4, errors: 0 },
-    { name: 'Mar', processed: 7, errors: 1 },
-    { name: 'Mie', processed: 5, errors: 0 },
-    { name: 'Jue', processed: 12, errors: 2 },
-    { name: 'Vie', processed: 8, errors: 0 },
-    { name: 'Sab', processed: 2, errors: 0 },
-    { name: 'Dom', processed: 1, errors: 0 },
-  ], []);
+  const systemActivity = useMemo(
+    () =>
+      (dashboardData?.actividad_7_dias ?? []).map((d) => ({
+        name: d.dia_semana,
+        processed: d.procesados,
+        errors: d.errores,
+      })),
+    [dashboardData],
+  );
 
   const totalReportCount = (dashboardData?.reportes_por_estado ?? []).reduce((s, i) => s + i.count, 0) || 1;
 
